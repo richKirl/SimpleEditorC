@@ -414,9 +414,9 @@ void renderText(int startX, int startY) {
       //if (c < 32 || c >= 128) continue; //
       CharInfo* chInfo = &fontMap[c];
       if(c=='\n'||c==10){ 
-	y+=24;//like from metrics heigth
-	x=startX;
-	break;
+		y+=24;//like from metrics heigth
+		x=startX;
+		break;
       }
 
       SDL_Rect dstRect = { x, y, chInfo->srcRect.w, chInfo->srcRect.h };
