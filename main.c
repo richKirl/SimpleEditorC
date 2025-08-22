@@ -490,7 +490,7 @@ int main(int argc, char* argv[]) {
 
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
-
+	///dancing with event for self task state process on the cpu
     int is_event;
     SDL_Event e;
 
