@@ -181,9 +181,9 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
       size_t new_capacity = b->capacity * 2;
       String **new_line_array = realloc(b->line, sizeof(String*) * new_capacity);
       if (new_line_array == NULL) {
-	string_free(new_line);
-	free(new_line);
-	return -1;
+		string_free(new_line);
+		free(new_line);
+		return -1;
       }
       b->line = new_line_array;
       b->capacity = new_capacity;
@@ -370,10 +370,10 @@ void handleInput(SDL_Event* e) {
     if (e->key.keysym.sym == SDLK_BACKSPACE && cursor_Line >= 0 && cursor_Pos >=0) {
       if(cursor_Pos == 0){}
       else {
-	memmove(buffer.line[cursor_Line]->data+(cursor_Pos-1),buffer.line[cursor_Line]->data+cursor_Pos,strlen(buffer.line[cursor_Line]->data));
-	buffer.line[cursor_Line]->data[buffer.line[cursor_Line]->length]='\0';
-	buffer.line[cursor_Line]->length--;
-	cursor_Pos--;
+		memmove(buffer.line[cursor_Line]->data+(cursor_Pos-1),buffer.line[cursor_Line]->data+cursor_Pos,strlen(buffer.line[cursor_Line]->data));
+		buffer.line[cursor_Line]->data[buffer.line[cursor_Line]->length]='\0';
+		buffer.line[cursor_Line]->length--;
+		cursor_Pos--;
       }
     }
     else if(e->key.keysym.sym == SDLK_TAB){
@@ -490,7 +490,7 @@ int main(int argc, char* argv[]) {
 
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
-	///dancing with event for self task state process on the cpu
+    ///dancing with event for self task state process on the cpu
     int is_event;
     SDL_Event e;
 
@@ -500,9 +500,9 @@ int main(int argc, char* argv[]) {
     
     while (is_event) {
       if (e.type == SDL_QUIT) {
-	running = 0;
+		running = 0;
       } else {
-	handleInput(&e);
+		handleInput(&e);
       }
       is_event = SDL_PollEvent(&e);
     }
@@ -530,4 +530,5 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
 
