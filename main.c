@@ -1,4 +1,4 @@
-//clang20 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf
+//clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -10,6 +10,10 @@
 #define SCREEN_HEIGHT 600
 #define FONT_SIZE 24
 #define MAX_TEXT_LENGTH 1024
+
+
+
+
 
 //glyph
 typedef struct {
@@ -182,9 +186,9 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
       size_t new_capacity = b->capacity * 2;
       String **new_line_array = realloc(b->line, sizeof(String*) * new_capacity);
       if (new_line_array == NULL) {
-		string_free(new_line);
-		free(new_line);
-		return -1;
+	string_free(new_line);
+	free(new_line);
+	return -1;
       }
       b->line = new_line_array;
       b->capacity = new_capacity;
@@ -220,6 +224,50 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
     b->totalSizeChars++;
     return 0;
   }
+}
+
+
+void bspace(Buffer *b, int from, int to, int n) {
+    if (n < 0 || n >= b->nlines) return;
+    String *line = b->line[n];
+
+    //if (from < 0 || from >= line->length+3) return;
+
+    if (line->data[from] == '\n') {
+        // Убедимся, что есть следующая строка
+        if (n + 1 < b->nlines) {
+            //printf("1\n");
+            String *nextLine = b->line[n + 1];
+
+            // Объединяем текущую строку с следующей
+            size_t newLength = line->length + nextLine->length;
+            line->data = realloc(line->data, newLength + 1);
+            if (line->data == NULL) {
+                // Обработка ошибки realloc
+                return;
+            }
+
+            // Копируем содержимое следующей строки в текущую
+            memcpy(line->data + line->length, nextLine->data, nextLine->length);
+            line->length = newLength;
+            line->data[line->length] = '\n';
+            line->data[line->length] = '\0';
+	    
+            // Удаляем следующую строку
+            free(nextLine);
+            for (int i = n + 1; i < b->nlines - 1; ++i) {
+                b->line[i] = b->line[i + 1];
+            }
+            b->nlines--;
+        }
+    } else {
+        // Удаляем обычный символ
+        if (to < 0 || to > line->length) return;
+
+        memmove(line->data + to, line->data + from, line->length - from);
+        line->length -= (from - to); // или просто line->length-- если удаляется один символ
+        line->data[line->length] = '\0';
+    }
 }
 
 
@@ -331,7 +379,6 @@ int createFontAtlas() {
       destRect.w= glyphSurface->w;
       destRect.h= glyphSurface->h;
     }
-    //destRect = { col * FONT_SIZE, row * FONT_SIZE, glyphSurface->w, glyphSurface->h };
 
     SDL_BlitSurface(glyphSurface, NULL, surface, &destRect);
 
@@ -369,13 +416,52 @@ void handleInput(SDL_Event* e) {
   }
   else if (e->type == SDL_KEYDOWN) {
     if (e->key.keysym.sym == SDLK_BACKSPACE && cursor_Line >= 0 && cursor_Pos >=0) {
-      if(cursor_Pos == 0){}
-      else {
-		memmove(buffer.line[cursor_Line]->data+(cursor_Pos-1),buffer.line[cursor_Line]->data+cursor_Pos,strlen(buffer.line[cursor_Line]->data));
-		buffer.line[cursor_Line]->data[buffer.line[cursor_Line]->length]='\0';
-		buffer.line[cursor_Line]->length--;
-		cursor_Pos--;
+      if(cursor_Pos == 0){
+      } else {
+        if ((buffer.line[cursor_Line]->data[cursor_Pos - 1]) == '\n') {
+          buffer.line[cursor_Line]->data[cursor_Pos - 1] = '\0';
+	  buffer.line[cursor_Line]->length=strlen(buffer.line[cursor_Line]->data);
+	  String *line = buffer.line[cursor_Line];
+          // printf("delete new line\n");
+          if (cursor_Line + 1 < buffer.nlines) {
+	    String *nextLine = buffer.line[cursor_Line + 1];
+
+            //split
+            size_t newLength = line->length + nextLine->length;
+            line->data = realloc(line->data, newLength + 1);
+            if (line->data == NULL) {
+	      // Обработка ошибки realloc
+	      return;
+            }
+
+            //copy to current
+            memcpy(line->data + line->length, nextLine->data, nextLine->length);
+            line->length = newLength;
+            //line->data[line->length] = '\n';
+            //line->data[line->length] = '\0';
+
+            //delete
+            free(nextLine);
+            for (int i = cursor_Line + 1; i < buffer.nlines - 1; ++i) {
+	      buffer.line[i] = buffer.line[i + 1];
+            }
+            buffer.nlines--;
+	  }
+        }
+	else {
+	  memmove(buffer.line[cursor_Line]->data + (cursor_Pos - 1),
+		  buffer.line[cursor_Line]->data + cursor_Pos,
+		  strlen(buffer.line[cursor_Line]->data));
+
+	  buffer.line[cursor_Line]->data[buffer.line[cursor_Line]->length]='\0';
+	  buffer.line[cursor_Line]->length--;
+	  cursor_Pos--;
+	}
       }
+    } else if (e->key.keysym.sym == SDLK_HOME) {
+      cursor_Pos =0;
+    } else if (e->key.keysym.sym == SDLK_END) {
+      cursor_Pos=buffer.line[cursor_Line]->length;
     }
     else if(e->key.keysym.sym == SDLK_TAB){
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, ' ');
@@ -415,9 +501,9 @@ void renderText(int startX, int startY) {
       //if (c < 32 || c >= 128) continue; //
       CharInfo* chInfo = &fontMap[c];
       if(c=='\n'||c==10){ 
-		y+=24;//like from metrics heigth
-		x=startX;
-		break;
+	y+=24;//like from metrics heigth
+	x=startX;
+	break;
       }
 
       SDL_Rect dstRect = { x, y, chInfo->srcRect.w, chInfo->srcRect.h };
@@ -501,9 +587,9 @@ int main(int argc, char* argv[]) {
     
     while (is_event) {
       if (e.type == SDL_QUIT) {
-		running = 0;
+	running = 0;
       } else {
-		handleInput(&e);
+	handleInput(&e);
       }
       is_event = SDL_PollEvent(&e);
     }
