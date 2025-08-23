@@ -227,50 +227,6 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
 }
 
 
-void bspace(Buffer *b, int from, int to, int n) {
-    if (n < 0 || n >= b->nlines) return;
-    String *line = b->line[n];
-
-    //if (from < 0 || from >= line->length+3) return;
-
-    if (line->data[from] == '\n') {
-        // Убедимся, что есть следующая строка
-        if (n + 1 < b->nlines) {
-            //printf("1\n");
-            String *nextLine = b->line[n + 1];
-
-            // Объединяем текущую строку с следующей
-            size_t newLength = line->length + nextLine->length;
-            line->data = realloc(line->data, newLength + 1);
-            if (line->data == NULL) {
-                // Обработка ошибки realloc
-                return;
-            }
-
-            // Копируем содержимое следующей строки в текущую
-            memcpy(line->data + line->length, nextLine->data, nextLine->length);
-            line->length = newLength;
-            line->data[line->length] = '\n';
-            line->data[line->length] = '\0';
-	    
-            // Удаляем следующую строку
-            free(nextLine);
-            for (int i = n + 1; i < b->nlines - 1; ++i) {
-                b->line[i] = b->line[i + 1];
-            }
-            b->nlines--;
-        }
-    } else {
-        // Удаляем обычный символ
-        if (to < 0 || to > line->length) return;
-
-        memmove(line->data + to, line->data + from, line->length - from);
-        line->length -= (from - to); // или просто line->length-- если удаляется один символ
-        line->data[line->length] = '\0';
-    }
-}
-
-
 String* buffer_get_line(const Buffer* b, size_t index) {
   if (index >= b->nlines) return NULL;
   return b->line[index];
