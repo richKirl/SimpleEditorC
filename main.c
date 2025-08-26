@@ -385,11 +385,14 @@ int createFontAtlas() {
     printf("TTF_OpenFont Error: %s\n", TTF_GetError());
     return 0;
   }
+  // this is just for debug time
+  //start
   int fx,fy,mx,my,ma;
   TTF_GlyphMetrics32(font, 'S', &fx, &mx, &fy, &my, &ma);
   fWidth = mx - fx;
   fHeight = my - fy;
-  SDL_Log("%d %d %d\n",fWidth,fHeight,ma);
+  SDL_Log("%d %d %d\n", fWidth, fHeight, ma);
+  //end
   //create surface atlas
   int atlasWidth = (16+40)*FONT_SIZE;
   int atlasHeight = (16+40)*FONT_SIZE;
@@ -488,7 +491,6 @@ void handleInput(SDL_Event* e) {
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, '\n');
       cursor_Line++;
       cursor_Pos = 0;
-      //string_append_char(&text, '\n');
     }
     else if (e->key.keysym.sym == SDLK_LEFT && cursor_Pos > 0) {
       cursor_Pos--;
@@ -581,7 +583,6 @@ void initCursor(Cursor *c){
 }
 
 void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y){
-  // SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
   // SDL_Rect dstRect = { x*13, y*24,13,23 };//24
   SDL_Rect dstRect = { x*8, y*FONT_SIZE,9,FONT_SIZE };//14
   SDL_RenderCopy(renderer,c->cursorTexture,NULL, &dstRect);
@@ -613,7 +614,7 @@ void closeCurFile(currFile *file) {
 
 int main(int argc, char *argv[]) {
   currFile cfile;
-  openCurFile(&cfile, "OpenglSDL2Window5.c");
+  openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file
   
   if (!initSDL()) return 1;
   if (!createFontAtlas()) return 1;
@@ -641,17 +642,17 @@ int main(int argc, char *argv[]) {
   
   int running = 1;
 
-
+  //test block start
   //SDL_Rect tempRect;
   //SDL_RenderGetViewport(renderer,&tempRect);
   //printf("%d %d %d %d\n", tempRect.x, tempRect.y, tempRect.w, tempRect.h);
   //tempRect.h = 570;
   //SDL_RenderSetViewport(renderer,&tempRect);
-
+  //test block end
 
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
-    ///dancing with event for self task state process on the cpu
+    ///dancing with event for self task state process on the cpu//like tracker state program
     int is_event;
     SDL_Event e;
 
