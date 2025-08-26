@@ -1,4 +1,5 @@
 //clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf
+//g3 - for debug for core file
 #include <stddef.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
@@ -18,11 +19,6 @@ void getWindowGW(int *w) {
 void getWindowGH(int *h) {
   *h=SCREEN_HEIGHT/FONT_SIZE;
 }
-
-//typedef struct DirFile {
-  
-//}curFile;
-
 
 //glyph
 typedef struct {
@@ -505,12 +501,15 @@ void handleInput(SDL_Event* e) {
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
     }
     else if (e->key.keysym.sym == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
+
+      // this is solution testing
+      // teststart
       if (cursor_Line + 1 >= (600 / FONT_SIZE)) {
         scrollY += FONT_SIZE;
         cursor_Line += 1;
         cursor_Line -= 1;
       }
-      
+      // testend
       cursor_Line++;
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ?
 	buffer.line[cursor_Line]->length : cursor_Pos;
