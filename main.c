@@ -522,8 +522,6 @@ void renderText(int startX, int startY) {
   int x = startX-scrollX;
   int y = startY-scrollY;
   for (int j = 0; j < buffer.nlines; j++) {
-    //y += FONT_SIZE;
-    //if (y + FONT_SIZE < 0 || y > SCREEN_HEIGHT) continue;
     for (int i = 0; i < buffer.line[j]->length; i++) {
       const char c = buffer.line[j]->data[i];
       //if (c < 32 || c >= 128) continue; //
