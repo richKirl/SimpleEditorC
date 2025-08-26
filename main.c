@@ -1,4 +1,5 @@
 //clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf
+#include <stddef.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -8,11 +9,19 @@
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
-#define FONT_SIZE 24
+#define FONT_SIZE 14
 #define MAX_TEXT_LENGTH 1024
 
+void getWindowGW(int *w) {
+  *w=SCREEN_WIDTH/FONT_SIZE;
+}
+void getWindowGH(int *h) {
+  *h=SCREEN_HEIGHT/FONT_SIZE;
+}
 
-
+//typedef struct DirFile {
+  
+//}curFile;
 
 
 //glyph
@@ -22,11 +31,16 @@ typedef struct {
   int width;        //width
 } CharInfo;
 
+int fWidth, fHeight;
+
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 TTF_Font* font = NULL;
 SDL_Texture* fontAtlas = NULL;
 
+int scrollX = 0;
+int scrollY = 0;
+  
 
 CharInfo fontMap[256]; //atlas
 int textLength = 0;
@@ -96,9 +110,10 @@ typedef struct {
   size_t capacity; //
   size_t currLine;
   size_t totalSizeChars;
+  int stateFlag;//0 scratch,1 openFile
 } Buffer;
 
-void buffer_init(Buffer* b) {
+void buffer_init(Buffer* b,int flag) {
   b->nlines = 0;
   b->capacity = 4; //start
   b->currLine = 0;
@@ -108,14 +123,23 @@ void buffer_init(Buffer* b) {
     fprintf(stderr, "Memory allocation failed\n");
     exit(EXIT_FAILURE);
   }
-  //add string
-  b->line[0] = malloc(sizeof(String));
-  if (b->line[0] == NULL) {
-    fprintf(stderr, "Memory allocation failed\n");
-    exit(EXIT_FAILURE);
+
+  b->line[0] = NULL;
+  if (flag == 0) {
+    if(b->line[0]==NULL){
+      //add string
+      b->line[0] = malloc(sizeof(String));
+      if (b->line[0] == NULL) {
+	fprintf(stderr, "Memory allocation failed\n");
+	exit(EXIT_FAILURE);
+      }
+      string_init(b->line[0]);
+      b->nlines = 1;
+    }
+  } else if (flag == 1) {
+    b->line[0] = NULL;
+    printf("FLAG\n");
   }
-  string_init(b->line[0]);
-  b->nlines = 1;
 }
 
 //add string
@@ -132,26 +156,51 @@ void buffer_append_str(Buffer* b, const char* str) {
     b->capacity = new_capacity;
   }
 
-  //add string
-  b->line[b->nlines] = malloc(sizeof(String));
-  if (b->line[b->nlines] == NULL) {
-    fprintf(stderr, "Memory allocation failed\n");
-    exit(EXIT_FAILURE);
+  if(b->line[0]==NULL){
+    //add string
+    b->line[0] = malloc(sizeof(String));
+    if (b->line[0] == NULL) {
+      fprintf(stderr, "Memory allocation failed\n");
+      exit(EXIT_FAILURE);
+    }
+    string_init(b->line[0]);
+    //b->nlines = 1;
+    // fill string
+    if (string_append_str(b->line[0], str) != 0) {
+      fprintf(stderr, "String append failed\n");
+      exit(EXIT_FAILURE);
+    }
+    printf("NEW LINE\n");
+    b->nlines++;
+    //b->currLine = b->nlines - 1;
+    //b->line[0]->length=strlen(str);
+    b->totalSizeChars += b->line[0]->length;
+    printf("ENDNEWLINE\n");
   }
-  string_init(b->line[b->nlines]);
+  else{
+  
+    //add string
+    b->line[b->nlines] = malloc(sizeof(String));
+    if (b->line[b->nlines] == NULL) {
+      fprintf(stderr, "Memory allocation failed\n");
+      exit(EXIT_FAILURE);
+    }
+    string_init(b->line[b->nlines]);
 
-  //fill string
-  if (string_append_str(b->line[b->nlines], str) != 0) {
-    fprintf(stderr, "String append failed\n");
-    exit(EXIT_FAILURE);
+    //fill string
+    if (string_append_str(b->line[b->nlines], str) != 0) {
+      fprintf(stderr, "String append failed\n");
+      exit(EXIT_FAILURE);
+    }
+    b->nlines++;
+    b->currLine = b->nlines - 1;
+    b->totalSizeChars += b->line[b->currLine]->length;
   }
 
-  b->nlines++;
-  b->currLine = b->nlines - 1;
-  b->totalSizeChars += b->line[b->currLine]->length;
 }
 
 int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
+
   if (line_index >= b->nlines) {
     return -1; //incorrect index
   }
@@ -227,6 +276,49 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
 }
 
 
+void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
+  if ((b->line[cursor_Line]->data[cursor_Pos - 1]) == '\n') {
+    b->line[cursor_Line]->data[cursor_Pos - 1] = '\0';
+    b->line[cursor_Line]->length=strlen(b->line[cursor_Line]->data);
+    String *line = b->line[cursor_Line];
+    // printf("delete new line\n");
+    if (cursor_Line + 1 < b->nlines) {
+      String *nextLine = b->line[cursor_Line + 1];
+
+      //split
+      size_t newLength = line->length + nextLine->length;
+      line->data = realloc(line->data, newLength + 1);
+      if (line->data == NULL) {
+	//error realloc
+	return;
+      }
+
+      //copy to current
+      memcpy(line->data + line->length, nextLine->data, nextLine->length);
+      line->length = newLength;
+      //line->data[line->length] = '\n';
+      //line->data[line->length] = '\0';
+
+      //delete
+      free(nextLine);
+      for (int i = cursor_Line + 1; i < b->nlines - 1; ++i) {
+	b->line[i] = b->line[i + 1];
+      }
+      b->nlines--;
+    }
+  }
+  else {
+    memmove(b->line[cursor_Line]->data + (cursor_Pos - 1),
+	    b->line[cursor_Line]->data + cursor_Pos,
+	    strlen(b->line[cursor_Line]->data));
+
+    b->line[cursor_Line]->data[b->line[cursor_Line]->length]='\0';
+    b->line[cursor_Line]->length--;
+    
+  }
+}
+
+
 String* buffer_get_line(const Buffer* b, size_t index) {
   if (index >= b->nlines) return NULL;
   return b->line[index];
@@ -272,7 +364,12 @@ int initSDL() {
     printf("TTF_Init Error: %s\n", TTF_GetError());
     return 0;
   }
-  window = SDL_CreateWindow("Text Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT,0);
+  int ww, hh;
+  getWindowGW(&ww);
+  getWindowGH(&hh);
+  int WindowW=(ww*FONT_SIZE);
+  int WindowH=(hh*FONT_SIZE);
+  window = SDL_CreateWindow("Text Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowW,WindowH,0);
   if (!window) {
     printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
     return 0;
@@ -292,7 +389,11 @@ int createFontAtlas() {
     printf("TTF_OpenFont Error: %s\n", TTF_GetError());
     return 0;
   }
-
+  int fx,fy,mx,my,ma;
+  TTF_GlyphMetrics32(font, 'S', &fx, &mx, &fy, &my, &ma);
+  fWidth = mx - fx;
+  fHeight = my - fy;
+  SDL_Log("%d %d %d\n",fWidth,fHeight,ma);
   //create surface atlas
   int atlasWidth = (16+40)*FONT_SIZE;
   int atlasHeight = (16+40)*FONT_SIZE;
@@ -374,45 +475,8 @@ void handleInput(SDL_Event* e) {
     if (e->key.keysym.sym == SDLK_BACKSPACE && cursor_Line >= 0 && cursor_Pos >=0) {
       if(cursor_Pos == 0){
       } else {
-        if ((buffer.line[cursor_Line]->data[cursor_Pos - 1]) == '\n') {
-          buffer.line[cursor_Line]->data[cursor_Pos - 1] = '\0';
-	  buffer.line[cursor_Line]->length=strlen(buffer.line[cursor_Line]->data);
-	  String *line = buffer.line[cursor_Line];
-          // printf("delete new line\n");
-          if (cursor_Line + 1 < buffer.nlines) {
-	    String *nextLine = buffer.line[cursor_Line + 1];
-
-            //split
-            size_t newLength = line->length + nextLine->length;
-            line->data = realloc(line->data, newLength + 1);
-            if (line->data == NULL) {
-	      // Обработка ошибки realloc
-	      return;
-            }
-
-            //copy to current
-            memcpy(line->data + line->length, nextLine->data, nextLine->length);
-            line->length = newLength;
-            //line->data[line->length] = '\n';
-            //line->data[line->length] = '\0';
-
-            //delete
-            free(nextLine);
-            for (int i = cursor_Line + 1; i < buffer.nlines - 1; ++i) {
-	      buffer.line[i] = buffer.line[i + 1];
-            }
-            buffer.nlines--;
-	  }
-        }
-	else {
-	  memmove(buffer.line[cursor_Line]->data + (cursor_Pos - 1),
-		  buffer.line[cursor_Line]->data + cursor_Pos,
-		  strlen(buffer.line[cursor_Line]->data));
-
-	  buffer.line[cursor_Line]->data[buffer.line[cursor_Line]->length]='\0';
-	  buffer.line[cursor_Line]->length--;
-	  cursor_Pos--;
-	}
+	buffer_backspace_test(&buffer,cursor_Line,cursor_Pos);
+	cursor_Pos--;
       }
     } else if (e->key.keysym.sym == SDLK_HOME) {
       cursor_Pos =0;
@@ -441,23 +505,32 @@ void handleInput(SDL_Event* e) {
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
     }
     else if (e->key.keysym.sym == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
+      if (cursor_Line + 1 >= (600 / FONT_SIZE)) {
+        scrollY += FONT_SIZE;
+        cursor_Line += 1;
+        cursor_Line -= 1;
+      }
+      
       cursor_Line++;
-      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
+      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ?
+	buffer.line[cursor_Line]->length : cursor_Pos;
     }
   }
 }
 
 //render text
 void renderText(int startX, int startY) {
-  int x = startX;
-  int y = startY;
-  for(int j=0;j<buffer.nlines;j++){
+  int x = startX-scrollX;
+  int y = startY-scrollY;
+  for (int j = 0; j < buffer.nlines; j++) {
+    //y += FONT_SIZE;
+    //if (y + FONT_SIZE < 0 || y > SCREEN_HEIGHT) continue;
     for (int i = 0; i < buffer.line[j]->length; i++) {
       const char c = buffer.line[j]->data[i];
       //if (c < 32 || c >= 128) continue; //
       CharInfo* chInfo = &fontMap[c];
       if(c=='\n'||c==10){ 
-	y+=24;//like from metrics heigth
+	y+=FONT_SIZE;//like from metrics heigth
 	x=startX;
 	break;
       }
@@ -466,6 +539,7 @@ void renderText(int startX, int startY) {
       SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       x += chInfo->width; //
     }
+    
   }
 }
 
@@ -510,8 +584,9 @@ void initCursor(Cursor *c){
 }
 
 void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y){
-  //SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-  SDL_Rect dstRect = { x*13, y*24,13,23 };
+  // SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+  // SDL_Rect dstRect = { x*13, y*24,13,23 };//24
+  SDL_Rect dstRect = { x*8, y*FONT_SIZE,9,FONT_SIZE };//14
   SDL_RenderCopy(renderer,c->cursorTexture,NULL, &dstRect);
 }
 
@@ -519,17 +594,63 @@ void freeCursor(Cursor *c){
   SDL_DestroyTexture(c->cursorTexture);
 }
 
-int main(int argc, char* argv[]) {
+typedef struct dirFile{
+  SDL_RWops *file;
+}currFile;
+
+void openCurFile(currFile *file,const char* path) {
+  file->file = SDL_RWFromFile(path, "r");//"OpenglSDL2Window5.c"
+  if (file == NULL) {
+    SDL_Log("Error opening file: %s", SDL_GetError());
+
+    // Handle error
+  } else {
+    Sint64 file_size = SDL_RWsize(file->file);
+    SDL_Log("File size: %ld bytes", file_size);
+  }
+}
+
+void closeCurFile(currFile *file) {
+  SDL_RWclose(file->file); // Close the file when done
+}
+
+int main(int argc, char *argv[]) {
+  currFile cfile;
+  openCurFile(&cfile, "OpenglSDL2Window5.c");
+  
   if (!initSDL()) return 1;
   if (!createFontAtlas()) return 1;
   Cursor cursor;
 
   initCursor(&cursor);
 
-  buffer_init(&buffer);
+  buffer_init(&buffer,1);
 
-  int running = 1;
+  char buffer1[1024]; // Adjust buffer size as needed
+  char c;
+  int bytesRead;
+  int i = 0;
+
+  while ((bytesRead = SDL_RWread(cfile.file, &c, sizeof(char), 1)) > 0) {
+    if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
+      buffer1[i] = '\n';// Null-terminate the string
+      buffer_append_str(&buffer,buffer1);
+      i = 0; // Reset buffer index for next line
+      if (c == '\n') continue; // Skip to next character if newline was the trigger
+    }
+    buffer1[i++] = c;
+  }
+  closeCurFile(&cfile);
   
+  int running = 1;
+
+
+  //SDL_Rect tempRect;
+  //SDL_RenderGetViewport(renderer,&tempRect);
+  //printf("%d %d %d %d\n", tempRect.x, tempRect.y, tempRect.w, tempRect.h);
+  //tempRect.h = 570;
+  //SDL_RenderSetViewport(renderer,&tempRect);
+
 
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
