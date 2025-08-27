@@ -1,5 +1,4 @@
-//clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf
-//g3 - for debug for core file
+// clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf g3 - for debug for core
 #include <stddef.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
@@ -36,7 +35,9 @@ SDL_Texture* fontAtlas = NULL;
 
 int scrollX = 0;
 int scrollY = 0;
-  
+SDL_Rect tempRect={ 0, 0, 800, 600};
+int tempS = 41;
+
 
 CharInfo fontMap[256]; //atlas
 int textLength = 0;
@@ -360,11 +361,13 @@ int initSDL() {
     printf("TTF_Init Error: %s\n", TTF_GetError());
     return 0;
   }
+  //start info
   int ww, hh;
   getWindowGW(&ww);
   getWindowGH(&hh);
   int WindowW=(ww*FONT_SIZE);
-  int WindowH=(hh*FONT_SIZE);
+  int WindowH = (hh * FONT_SIZE);
+  //end info
   window = SDL_CreateWindow("Text Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowW,WindowH,0);
   if (!window) {
     printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
@@ -461,9 +464,10 @@ void initText() {
   string_init(&text);
   string_append_str(&text, initial);
 }
-
+int countScrollBack = 41;
+int flagScroll=0;
 //work with input
-void handleInput(SDL_Event* e) {
+void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
   if (e->type == SDL_TEXTINPUT) {
     if (textLength < MAX_TEXT_LENGTH - 1) {
       buffer_insert_char(&buffer,cursor_Line,cursor_Pos,e->text.text[0]);
@@ -499,22 +503,25 @@ void handleInput(SDL_Event* e) {
       cursor_Pos++;
     }
     else if (e->key.keysym.sym == SDLK_UP && cursor_Line > 0) {
-      cursor_Line--;
+      if (cursor_Line - 1 < tempS-41) {
+	scrollY-=FONT_SIZE;
+        cursor_Line--;
+	tempS--;
+      }
+      else cursor_Line--;
+      //printf("%d\n",cursor_Line);
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
     }
     else if (e->key.keysym.sym == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
 
-      // this is solution testing
-      // teststart
-      if (cursor_Line + 1 >= (600 / FONT_SIZE)) {
-        scrollY += FONT_SIZE;
-        cursor_Line += 1;
-        cursor_Line -= 1;
+      if (cursor_Line + 1 > tempS) {
+	scrollY+=FONT_SIZE;
+        cursor_Line++;
+	tempS++;
       }
-      // testend
-      cursor_Line++;
-      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ?
-	buffer.line[cursor_Line]->length : cursor_Pos;
+      else cursor_Line++;
+      //printf("%d\n",cursor_Line);
+      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
     }
   }
 }
@@ -584,7 +591,7 @@ void initCursor(Cursor *c){
 
 void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y){
   // SDL_Rect dstRect = { x*13, y*24,13,23 };//24
-  SDL_Rect dstRect = { x*8, y*FONT_SIZE,9,FONT_SIZE };//14
+  SDL_Rect dstRect = {x * 8, y * FONT_SIZE-scrollY, 9, FONT_SIZE}; // 14
   SDL_RenderCopy(renderer,c->cursorTexture,NULL, &dstRect);
 }
 
@@ -642,14 +649,6 @@ int main(int argc, char *argv[]) {
   
   int running = 1;
 
-  //test block start
-  //SDL_Rect tempRect;
-  //SDL_RenderGetViewport(renderer,&tempRect);
-  //printf("%d %d %d %d\n", tempRect.x, tempRect.y, tempRect.w, tempRect.h);
-  //tempRect.h = 570;
-  //SDL_RenderSetViewport(renderer,&tempRect);
-  //test block end
-
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
     ///dancing with event for self task state process on the cpu//like tracker state program
@@ -664,15 +663,16 @@ int main(int argc, char *argv[]) {
       if (e.type == SDL_QUIT) {
 	running = 0;
       } else {
-	handleInput(&e);
+	handleInput(&e,renderer);
       }
       is_event = SDL_PollEvent(&e);
     }
-    if(event){
+    if (event) {
+
       SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
       SDL_RenderClear(renderer);
 
-    
+      
       renderText(0, 0);
       renderCursor(renderer,&cursor,cursor_Pos,cursor_Line);
       SDL_RenderPresent(renderer);
