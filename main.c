@@ -138,7 +138,6 @@ void buffer_init(Buffer* b,int flag) {
     //printf("FLAG\n");
   }
 }
-int cccc=0;
 //add string
 void buffer_append_str(Buffer* b, const char* str) {
   //grow up if need
@@ -167,13 +166,6 @@ void buffer_append_str(Buffer* b, const char* str) {
       fprintf(stderr, "String append failed\n");
       exit(EXIT_FAILURE);
     }
-    //printf("NEW LINE\n");
-    /* b->nlines++; */
-    /* b->currLine = b->nlines-1; */
-    /* b->line[0]->length=strlen(str); */
-    /* b->totalSizeChars += b->line[0]->length; */
-    // printf("ENDNEWLINE\n");
-    
   }
   else{
   
@@ -190,16 +182,11 @@ void buffer_append_str(Buffer* b, const char* str) {
       fprintf(stderr, "String append failed\n");
       exit(EXIT_FAILURE);
     }
-
-    //b->totalSizeChars += b->line[b->currLine]->length;
-    //printf("%d %d\n", cccc,strlen(b->line[0]->data));
-    //cccc++;
   }
-    b->nlines++;
-    b->currLine = b->nlines-1;
-    b->line[b->currLine]->length=strlen(str);
-    b->totalSizeChars += b->line[b->currLine]->length;
-    //printf("%d %ld\n", cccc,strlen(str));
+  b->nlines++;
+  b->currLine = b->nlines-1;
+  b->line[b->currLine]->length=strlen(str);
+  b->totalSizeChars += b->line[b->currLine]->length;
 }
 
 int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
@@ -548,9 +535,9 @@ void renderText(int startX, int startY) {
       }
 
       if (buffer.line[j]->data[0] == '/' && buffer.line[j]->data[1] == '/') {
-	      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	      SDL_SetTextureColorMod( fontAtlas,0,200,0);
-	      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	SDL_SetTextureColorMod( fontAtlas,0,200,0);
+	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       }
       else{
 	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
@@ -567,30 +554,16 @@ void renderText(int startX, int startY) {
 void renderTextA(String *s,int startX, int startY) {
   int x = startX;
   int y = startY;
-  //for (int j = 0; j < buffer.nlines; j++) {
   for (int i = 0; i < s->length; i++) {
     const char c = s->data[i];
     //if (c < 32 || c >= 128) continue; //
     CharInfo* chInfo = &fontMap[c];
-    //if(c=='\n'||c==10){ 
-    //y+=FONT_SIZE;//like from metrics heigth
-    //x=startX;
-    //break;
-    //}
-
-    /* if (buffer.line[j]->data[0] == '/' && buffer.line[j]->data[1] == '/') { */
-    /* 	      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h}; */
-    /* 	      SDL_SetTextureColorMod( fontAtlas,0,200,0); */
-    /* 	      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect); */
-    /* } else */
     {
       SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
       SDL_SetTextureColorMod( fontAtlas,255,255,255);
       SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
     }
     x += chInfo->width; //
-    //}
-    
   }
 }
 //////////////////////////////////////////////////////
@@ -618,21 +591,11 @@ void initPanel(Panel *p) {
 					      0x0000FF00,
 					      0x000000FF,
 					      0xFF000000);
-   /* SDL_Surface* surface1 = SDL_CreateRGBSurface( */
-   /* 					      0, */
-   /* 					      atlasWidth, */
-   /* 					      15, */
-   /* 					      32, */
-   /* 					      0x00FF0000, */
-   /* 					      0x0000FF00, */
-   /* 					      0x000000FF, */
-   /* 					      0xFF000000); */
 
-   SDL_FillRect( surface,NULL,SDL_MapRGBA(surface->format, 255, 255, 255, 150)); // Fill with red
-   p->panelTexture = SDL_CreateTextureFromSurface(renderer, surface);
+  SDL_FillRect( surface,NULL,SDL_MapRGBA(surface->format, 255, 255, 255, 150)); // Fill with red
+  p->panelTexture = SDL_CreateTextureFromSurface(renderer, surface);
 
   SDL_FreeSurface(surface);
-  //SDL_FreeSurface(surface1);
 }
 
 void renderPanel(SDL_Renderer *renderer,Panel *p,int x,int y){
@@ -671,7 +634,7 @@ void initCursor(Cursor *c){
 
 void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y){
   // SDL_Rect dstRect = { x*13, y*24,13,23 };//24
-  SDL_Rect dstRect = {x * 8, y * FONT_SIZE-scrollY, 9, FONT_SIZE}; // 14
+  SDL_Rect dstRect = {x * 8, y * FONT_SIZE-scrollY, 9, FONT_SIZE}; // 14//need understand how to calculate actual size cursor
   SDL_RenderCopy(renderer,c->cursorTexture,NULL, &dstRect);
 }
 
@@ -702,25 +665,25 @@ void closeCurFile(currFile *file) {
 
 
 char* getC(int N){
-    int n=N;
-    size_t l;
-    if(n>0){
-        l=log10(abs(n))+1;
-    }
-    else if(n<0){
-        l=log10(abs(n))+1;
-        l++;
-    }
-    else if(n==0){
-        l=1;
-    }
-    printf("%d\n",l);
-    char *buffer=malloc(sizeof(char)*l);
-    if(buffer==NULL)exit(-1);
+  int n=N;
+  size_t l;
+  if(n>0){
+    l=log10(abs(n))+1;
+  }
+  else if(n<0){
+    l=log10(abs(n))+1;
+    l++;
+  }
+  else if(n==0){
+    l=1;
+  }
+  printf("%d\n",l);
+  char *buffer=malloc(sizeof(char)*l);
+  if(buffer==NULL)exit(-1);
 
-    snprintf(buffer,l+1, "%d", n);
+  snprintf(buffer,l+1, "%d", n);
 
-    return buffer;
+  return buffer;
 }
 
 
@@ -728,7 +691,7 @@ char* getC(int N){
 
 int main(int argc, char *argv[]) {
   currFile cfile;
-  openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file
+  openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file//need open from arg/from hotkey/from menu
   
   if (!initSDL()) return 1;
   if (!createFontAtlas()) return 1;
@@ -736,13 +699,15 @@ int main(int argc, char *argv[]) {
   Panel panel;
   initCursor(&cursor);
   initPanel(&panel);
-  buffer_init(&buffer,1);
+  buffer_init(&buffer,1);//if open FILE set flag 1, if open scratch set flag 0
 
+  //need structure1
   char buffer1[1024]; // Adjust buffer size as needed
   char c;
   int bytesRead;
   int i = 0;
 
+  
   while ((bytesRead = SDL_RWread(cfile.file, &c, sizeof(char), 1)) > 0) {
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
       buffer1[i] = '\n';                         // Null-terminate the string
@@ -755,57 +720,27 @@ int main(int argc, char *argv[]) {
     buffer1[i++] = c;
   }
   closeCurFile(&cfile);
+  // need structure1
   
   int running = 1;
 
-  //SDL_RenderGetViewport(renderer,&tempRect);
-
-  //printf("%d %d %d %d\n", tempRect.x, tempRect.y, tempRect.w, tempRect.h);
-
-  //tempRect.h = 572;
   SDL_Rect textArea = {0, 0, 800, 575};
-  //SDL_RenderSetViewport(renderer,&tempRect);
 
-
+  // need structure2
   String str;
   string_init(&str);
 
-  //char inT[] = ;
   string_append_str(&str, "FileName: ");
 
   string_append_str(&str, "OpenglSDL2Window5.c ");
 
-  string_append_str(&str, "TotalSize: ");
+  string_append_str(&str, "Chars: ");
 
-  printf("%zu\n", buffer.totalSizeChars);
-
-  /* int tempN = buffer.totalSizeChars; */
-  /* char res[10] = ""; */
-  /* int countNN=0; */
-  /* while (tempN != 0) { */
-  /*   int cc = tempN % 10; */
-  /*   char symN = cc + '0'; */
-  /*   //countNN+=1; */
-  /*   res[countNN++]=symN; */
-  /*   //printf("%s\n",res ); */
-    
-  /*   tempN=tempN /10; */
-  /* } */
-  /* // res^=countNN; */
-  /* for (int i = 0; i < 6; i++) { */
-  /*   int charT = res[countNN]; */
-  /*   res[countNN] = res[i]; */
-  /*   res[i] = charT; */
-  /*   countNN--; */
-  /* } */
-  /* //res[countNN]='\0'; */
-  /* printf("Number %s\n",res ); */
   char *ptr=getC(buffer.totalSizeChars);
   string_append_str(&str, ptr);
   free(ptr);
-
-  //printf("%d %zu\n", cccc,buffer.line[1]->length);
-  //buffer_print(&buffer);
+  // need structure2
+  
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
     ///dancing with event for self task state process on the cpu//like tracker state program
@@ -831,14 +766,14 @@ int main(int argc, char *argv[]) {
 
 
 
-SDL_RenderSetClipRect(renderer, &textArea);
-renderText(0, 0);
-SDL_RenderSetClipRect(renderer, NULL);
+      SDL_RenderSetClipRect(renderer, &textArea);
+      renderText(0, 0);//renderTextSpaceBufferLines
+      SDL_RenderSetClipRect(renderer, NULL);
 
-renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
+      renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
 
 
-renderTextA(&str, 0, 575);
+      renderTextA(&str, 0, 575);//renderCustomLine
  
       renderPanel(renderer,&panel,0,575);
       SDL_RenderPresent(renderer);
@@ -859,5 +794,7 @@ renderTextA(&str, 0, 575);
 
   return 0;
 }
+// need edit/correction \t//w-s for coloring comments
+// 2 structures file-operations/customdecorstring
 
 
