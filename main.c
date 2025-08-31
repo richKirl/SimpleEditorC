@@ -56,7 +56,7 @@ void string_init(String *s) {
     fprintf(stderr, "Failed to allocate memory\n");
     exit(EXIT_FAILURE);
   }
-  s->data[0] = '\0';
+  //s->data[0] = '\0';
 }
 
 int string_append_str(String *s, const char *str) {
@@ -121,7 +121,7 @@ void buffer_init(Buffer* b,int flag) {
     exit(EXIT_FAILURE);
   }
 
-  b->line[0] = NULL;
+  //b->line[0] = NULL;
   if (flag == 0) {
     if(b->line[0]==NULL){
       //add string
@@ -134,11 +134,11 @@ void buffer_init(Buffer* b,int flag) {
       b->nlines = 1;
     }
   } else if (flag == 1) {
-    b->line[0] = NULL;
-    printf("FLAG\n");
+    //b->line[0] = NULL;
+    //printf("FLAG\n");
   }
 }
-
+int cccc=0;
 //add string
 void buffer_append_str(Buffer* b, const char* str) {
   //grow up if need
@@ -167,12 +167,13 @@ void buffer_append_str(Buffer* b, const char* str) {
       fprintf(stderr, "String append failed\n");
       exit(EXIT_FAILURE);
     }
-    printf("NEW LINE\n");
-    b->nlines++;
-    //b->currLine = b->nlines - 1;
-    //b->line[0]->length=strlen(str);
-    b->totalSizeChars += b->line[0]->length;
-    printf("ENDNEWLINE\n");
+    //printf("NEW LINE\n");
+    /* b->nlines++; */
+    /* b->currLine = b->nlines-1; */
+    /* b->line[0]->length=strlen(str); */
+    /* b->totalSizeChars += b->line[0]->length; */
+    // printf("ENDNEWLINE\n");
+    
   }
   else{
   
@@ -189,11 +190,16 @@ void buffer_append_str(Buffer* b, const char* str) {
       fprintf(stderr, "String append failed\n");
       exit(EXIT_FAILURE);
     }
-    b->nlines++;
-    b->currLine = b->nlines - 1;
-    b->totalSizeChars += b->line[b->currLine]->length;
-  }
 
+    //b->totalSizeChars += b->line[b->currLine]->length;
+    //printf("%d %d\n", cccc,strlen(b->line[0]->data));
+    //cccc++;
+  }
+    b->nlines++;
+    b->currLine = b->nlines-1;
+    b->line[b->currLine]->length=strlen(str);
+    b->totalSizeChars += b->line[b->currLine]->length;
+    //printf("%d %ld\n", cccc,strlen(str));
 }
 
 int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
@@ -394,7 +400,7 @@ int createFontAtlas() {
   TTF_GlyphMetrics32(font, 'S', &fx, &mx, &fy, &my, &ma);
   fWidth = mx - fx;
   fHeight = my - fy;
-  SDL_Log("%d %d %d\n", fWidth, fHeight, ma);
+  //SDL_Log("%d %d %d\n", fWidth, fHeight, ma);
   //end
   //create surface atlas
   int atlasWidth = (16+40)*FONT_SIZE;
@@ -541,13 +547,54 @@ void renderText(int startX, int startY) {
 	break;
       }
 
-      SDL_Rect dstRect = { x, y, chInfo->srcRect.w, chInfo->srcRect.h };
-      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+      if (buffer.line[j]->data[0] == '/' && buffer.line[j]->data[1] == '/') {
+	      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	      SDL_SetTextureColorMod( fontAtlas,0,200,0);
+	      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+      }
+      else{
+	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	SDL_SetTextureColorMod( fontAtlas,255,255,255);
+	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+      }
       x += chInfo->width; //
     }
     
   }
 }
+
+//render CUSTOM text////////////////////////////////
+void renderTextA(String *s,int startX, int startY) {
+  int x = startX;
+  int y = startY;
+  //for (int j = 0; j < buffer.nlines; j++) {
+  for (int i = 0; i < s->length; i++) {
+    const char c = s->data[i];
+    //if (c < 32 || c >= 128) continue; //
+    CharInfo* chInfo = &fontMap[c];
+    //if(c=='\n'||c==10){ 
+    //y+=FONT_SIZE;//like from metrics heigth
+    //x=startX;
+    //break;
+    //}
+
+    /* if (buffer.line[j]->data[0] == '/' && buffer.line[j]->data[1] == '/') { */
+    /* 	      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h}; */
+    /* 	      SDL_SetTextureColorMod( fontAtlas,0,200,0); */
+    /* 	      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect); */
+    /* } else */
+    {
+      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+      SDL_SetTextureColorMod( fontAtlas,255,255,255);
+      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+    }
+    x += chInfo->width; //
+    //}
+    
+  }
+}
+//////////////////////////////////////////////////////
+
 
 //update char and pos
 void updateCharAt(int index, char newChar) {
@@ -555,13 +602,46 @@ void updateCharAt(int index, char newChar) {
 }
 
 typedef struct MicroPanel{
-  SDL_Surface *panelSurface;
-  SDL_Texture *texturePanel;
+  SDL_Texture *panelTexture;
   SDL_Rect panel;
 }Panel;
 
-void renderPanel(Panel *p,int x,int y){
-  
+void initPanel(Panel *p) {
+  int atlasWidth = 800;
+  int atlasHeight = 25;
+  SDL_Surface* surface = SDL_CreateRGBSurface(
+					      0,
+					      atlasWidth,
+					      atlasHeight,
+					      32,
+					      0x00FF0000,
+					      0x0000FF00,
+					      0x000000FF,
+					      0xFF000000);
+   /* SDL_Surface* surface1 = SDL_CreateRGBSurface( */
+   /* 					      0, */
+   /* 					      atlasWidth, */
+   /* 					      15, */
+   /* 					      32, */
+   /* 					      0x00FF0000, */
+   /* 					      0x0000FF00, */
+   /* 					      0x000000FF, */
+   /* 					      0xFF000000); */
+
+   SDL_FillRect( surface,NULL,SDL_MapRGBA(surface->format, 255, 255, 255, 150)); // Fill with red
+   p->panelTexture = SDL_CreateTextureFromSurface(renderer, surface);
+
+  SDL_FreeSurface(surface);
+  //SDL_FreeSurface(surface1);
+}
+
+void renderPanel(SDL_Renderer *renderer,Panel *p,int x,int y){
+  SDL_Rect dstRect = {0,575,800,FONT_SIZE*2}; // 14
+  SDL_RenderCopy(renderer,p->panelTexture,NULL, &dstRect);
+}
+
+void freePanel(Panel *p) {
+  SDL_DestroyTexture(p->panelTexture);
 }
 
 typedef struct MicroCursor{
@@ -619,6 +699,33 @@ void closeCurFile(currFile *file) {
   SDL_RWclose(file->file); // Close the file when done
 }
 
+
+
+char* getC(int N){
+    int n=N;
+    size_t l;
+    if(n>0){
+        l=log10(abs(n))+1;
+    }
+    else if(n<0){
+        l=log10(abs(n))+1;
+        l++;
+    }
+    else if(n==0){
+        l=1;
+    }
+    printf("%d\n",l);
+    char *buffer=malloc(sizeof(char)*l);
+    if(buffer==NULL)exit(-1);
+
+    snprintf(buffer,l+1, "%d", n);
+
+    return buffer;
+}
+
+
+
+
 int main(int argc, char *argv[]) {
   currFile cfile;
   openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file
@@ -626,9 +733,9 @@ int main(int argc, char *argv[]) {
   if (!initSDL()) return 1;
   if (!createFontAtlas()) return 1;
   Cursor cursor;
-
+  Panel panel;
   initCursor(&cursor);
-
+  initPanel(&panel);
   buffer_init(&buffer,1);
 
   char buffer1[1024]; // Adjust buffer size as needed
@@ -638,9 +745,11 @@ int main(int argc, char *argv[]) {
 
   while ((bytesRead = SDL_RWread(cfile.file, &c, sizeof(char), 1)) > 0) {
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
-      buffer1[i] = '\n';// Null-terminate the string
+      buffer1[i] = '\n';                         // Null-terminate the string
+      buffer1[i+1] = '\0';// Null-terminate the string
       buffer_append_str(&buffer,buffer1);
       i = 0; // Reset buffer index for next line
+      buffer1[0] = '\0';// Null-terminate the string// 
       if (c == '\n') continue; // Skip to next character if newline was the trigger
     }
     buffer1[i++] = c;
@@ -649,6 +758,54 @@ int main(int argc, char *argv[]) {
   
   int running = 1;
 
+  //SDL_RenderGetViewport(renderer,&tempRect);
+
+  //printf("%d %d %d %d\n", tempRect.x, tempRect.y, tempRect.w, tempRect.h);
+
+  //tempRect.h = 572;
+  SDL_Rect textArea = {0, 0, 800, 575};
+  //SDL_RenderSetViewport(renderer,&tempRect);
+
+
+  String str;
+  string_init(&str);
+
+  //char inT[] = ;
+  string_append_str(&str, "FileName: ");
+
+  string_append_str(&str, "OpenglSDL2Window5.c ");
+
+  string_append_str(&str, "TotalSize: ");
+
+  printf("%zu\n", buffer.totalSizeChars);
+
+  /* int tempN = buffer.totalSizeChars; */
+  /* char res[10] = ""; */
+  /* int countNN=0; */
+  /* while (tempN != 0) { */
+  /*   int cc = tempN % 10; */
+  /*   char symN = cc + '0'; */
+  /*   //countNN+=1; */
+  /*   res[countNN++]=symN; */
+  /*   //printf("%s\n",res ); */
+    
+  /*   tempN=tempN /10; */
+  /* } */
+  /* // res^=countNN; */
+  /* for (int i = 0; i < 6; i++) { */
+  /*   int charT = res[countNN]; */
+  /*   res[countNN] = res[i]; */
+  /*   res[i] = charT; */
+  /*   countNN--; */
+  /* } */
+  /* //res[countNN]='\0'; */
+  /* printf("Number %s\n",res ); */
+  char *ptr=getC(buffer.totalSizeChars);
+  string_append_str(&str, ptr);
+  free(ptr);
+
+  //printf("%d %zu\n", cccc,buffer.line[1]->length);
+  //buffer_print(&buffer);
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
     ///dancing with event for self task state process on the cpu//like tracker state program
@@ -672,16 +829,26 @@ int main(int argc, char *argv[]) {
       SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
       SDL_RenderClear(renderer);
 
-      
-      renderText(0, 0);
-      renderCursor(renderer,&cursor,cursor_Pos,cursor_Line);
+
+
+SDL_RenderSetClipRect(renderer, &textArea);
+renderText(0, 0);
+SDL_RenderSetClipRect(renderer, NULL);
+
+renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
+
+
+renderTextA(&str, 0, 575);
+ 
+      renderPanel(renderer,&panel,0,575);
       SDL_RenderPresent(renderer);
       Uint32 end = SDL_GetPerformanceCounter();
       double dt = (double)(1000*(end-start)) / SDL_GetPerformanceFrequency();
     }
   }
-
+  string_free(&str);
   buffer_free(&buffer);
+  freePanel(&panel);
   freeCursor(&cursor);
   SDL_DestroyTexture(fontAtlas);
   TTF_CloseFont(font);
