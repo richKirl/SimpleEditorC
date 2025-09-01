@@ -56,7 +56,7 @@ void string_init(String *s) {
     fprintf(stderr, "Failed to allocate memory\n");
     exit(EXIT_FAILURE);
   }
-  //s->data[0] = '\0';
+  s->data[0] = '\0';
 }
 
 int string_append_str(String *s, const char *str) {
@@ -134,7 +134,7 @@ void buffer_init(Buffer* b,int flag) {
       b->nlines = 1;
     }
   } else if (flag == 1) {
-    //b->line[0] = NULL;
+    b->line[0] = NULL;
     //printf("FLAG\n");
   }
 }
@@ -677,11 +677,11 @@ char* getC(int N){
   else if(n==0){
     l=1;
   }
-  printf("%d\n",l);
+  //printf("%d\n",l);
   char *buffer=malloc(sizeof(char)*l);
   if(buffer==NULL)exit(-1);
 
-  snprintf(buffer,l+1, "%d", n);
+  snprintf(buffer,l, "%d", n);
 
   return buffer;
 }
@@ -796,5 +796,8 @@ int main(int argc, char *argv[]) {
 }
 // need edit/correction \t//w-s for coloring comments
 // 2 structures file-operations/customdecorstring
-
+// numberslines
+// fixsurfaceFORtext
+// fixposendcursor
+// add menubar
 
