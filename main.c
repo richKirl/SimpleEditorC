@@ -25,7 +25,7 @@
 #define FONT_SIZE 14
 #define MAX_TEXT_LENGTH 1024
 
-
+//////////////////////////////////////////////////////////////
 //tools
 void getWindowGW(int *w) {
   *w=SCREEN_WIDTH/FONT_SIZE;
@@ -58,9 +58,9 @@ char* getC(int N){
   return gNumber;
 }
 //tools
+///////////////////////////////////////////////////////////////
 
-
-
+///////////////////////////////////////////////////////////////
 //glyph
 typedef struct {
   char ch;
@@ -83,6 +83,8 @@ int tempS = 41;
 
 CharInfo fontMap[256]; //atlas
 int textLength = 0;
+///////////////////////////////////////////////////////////////////
+
 
 typedef struct {
   char *data;
@@ -142,7 +144,11 @@ void string_free(String *s) {
   s->length = 0;
   s->capacity = 0;
 }
+///////////////////////////////////////////////////////////////////////////////////////
 
+
+
+////////////////////////////////////////////////////////////////////////////////////////
 typedef struct {
   String **line; //pointer to lines
   size_t nlines; //number of lines
@@ -376,7 +382,7 @@ void buffer_free(Buffer* b) {
   b->currLine = 0;
   b->totalSizeChars = 0;
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 String text;
 
@@ -388,7 +394,7 @@ size_t cursor_Pos=0;
 
 
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //render CUSTOM text////////////////////////////////
 void renderTextA(String *s,int startX, int startY) {
@@ -473,38 +479,13 @@ void CustomString_free(CustomString *s) {
 CustomString cstring;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
 //init SDL SDL_ttf
 int initSDL() {
-  //#if 1
-  /* Always use X11 on platforms that support it, not native Wayland */
-  //setenv("SDL_VIDEODRIVER", "x11", 1);
-  //SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
-  //SDL_SetHint("SDL_FRAMEBUFFER_ACCELERATION","opengl");
-  //SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
-  //SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
-  //printf("123456\n");
-  //#endif
+
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     printf("SDL_Init Error: %s\n", SDL_GetError());
     return 0;
@@ -519,53 +500,7 @@ int initSDL() {
   getWindowGH(&hh);
   int WindowW=(ww*FONT_SIZE);
   int WindowH = (hh * FONT_SIZE);
-  // end info
-  //
-  //window = SDL_CreateWindow("Text Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowW,WindowH,SDL_WINDOW_SHOWN);
-  //if (!window) {
-  //  printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
-  //  return 0;
-  //}
 
-  /* // Select render driver */
-  /* // - A render driver that supports HW acceleration is used when available */
-  /* // - Otherwise a render driver supporting software fallback is selected */
-  /* SDL_RendererInfo renderDriverInfo; */
-  /* uint32_t rendererFlags  = SDL_RENDERER_TARGETTEXTURE; */
-  /* int32_t nbRenderDrivers = SDL_GetNumRenderDrivers(), index = 0; */
-
-  /* while (index < nbRenderDrivers) { */
-  
-  /*   if (SDL_GetRenderDriverInfo(index, &renderDriverInfo) == 0) { */
-
-    
-  /*         if (((renderDriverInfo.flags & rendererFlags) == rendererFlags) */
-  /*             && ((renderDriverInfo.flags & SDL_RENDERER_ACCELERATED) == SDL_RENDERER_ACCELERATED)) */
-  /*         { */
-  /*             // Using render driver with HW acceleration */
-  /*             rendererFlags |= SDL_RENDERER_ACCELERATED; */
-  /*             SDL_SetHint(SDL_HINT_RENDER_DRIVER,"software"); */
-  /* 	    printf("%s\n",renderDriverInfo.name); */
-  /*             break; */
-  /*         } */
-  /*     } */
-  /*     ++index; */
-  /* } */
-
-  /*  if (index == nbRenderDrivers) */
-  /* { */
-  /*     // Let SDL use the first render driver supporting software fallback */
-  /*     rendererFlags |= SDL_RENDERER_SOFTWARE; */
-  /*     index = -1; */
-  /* } */
-
-  // SDL_SetHint(SDL_HINT_RENDER_DRIVER, renderDriverInfo.name);
-  // renderer = SDL_CreateRenderer(window, -1,
-  // SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC); if (!renderer) {
-  //   printf("SDL_CreateRenderer Error: %s\n", SDL_GetError());
-  //   return 0;
-  // }
-  // return 1;
   SDL_CreateWindowAndRenderer(WindowW, WindowH,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC,&window, &renderer);
   //printf("SDL_CreateWindowAndRenderer() Error: %s\n", SDL_GetError());
   //return 0;
@@ -904,29 +839,12 @@ int main(int argc, char *argv[]) {
 
   SDL_Rect textArea = {0, 0, 800, 575};
 
-
-
-
   CustomString_init(&cstring, 4, 4, 0, 575);
   CustomString_Add(&cstring, "Filename: ", 0, 0, 0, 0, 0);
   CustomString_Add(&cstring, "OpenglSDL2Window5.c ", 1, 1, 9, 0, 0);
   CustomString_Add(&cstring, "Chars: ", 2, 2, 9+strlen("OpenglSDL2Window5.c "), 0, 0);
   CustomString_Add(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
-  // need structure2
-  /* String str; */
-  /* string_init(&str); */
 
-  /* string_append_str(&str, "FileName: "); */
-
-  /* string_append_str(&str, "OpenglSDL2Window5.c "); */
-
-  /* string_append_str(&str, "Chars: "); */
-
-  /* char *ptr=getC(buffer.totalSizeChars); */
-  /* string_append_str(&str, ptr); */
-  /* free(ptr); */
-  // need structure2
-  
   while (running) {
     Uint32 start = SDL_GetPerformanceCounter();
     ///dancing with event for self task state process on the cpu//like tracker state program
@@ -959,7 +877,7 @@ int main(int argc, char *argv[]) {
       renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
 
       CustomString_Render(&cstring);
-      /* renderTextA(&str, 0, 575);//renderCustomLine */
+
  
       renderPanel(renderer,&panel,0,575);
       SDL_RenderPresent(renderer);
@@ -968,7 +886,6 @@ int main(int argc, char *argv[]) {
     }
   }
   CustomString_free(&cstring);
-  /* string_free(&str); */
   buffer_free(&buffer);
   freePanel(&panel);
   freeCursor(&cursor);
@@ -982,7 +899,6 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 // need edit/correction \t//w-s for coloring comments
-// 2 structures file-operations/customdecorstring
 // numberslines
 // fixsurfaceFORtext
 // fixposendcursor
