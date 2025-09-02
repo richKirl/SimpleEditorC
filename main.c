@@ -19,17 +19,47 @@
 #include <string.h>
 #include <stdlib.h>
 
+
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define FONT_SIZE 14
 #define MAX_TEXT_LENGTH 1024
 
+
+//tools
 void getWindowGW(int *w) {
   *w=SCREEN_WIDTH/FONT_SIZE;
 }
 void getWindowGH(int *h) {
   *h=SCREEN_HEIGHT/FONT_SIZE;
 }
+
+
+// extract int number from int to string rep
+char* getC(int N){
+  int n=N;
+  size_t l;
+  if(n>0){
+    l=log10(abs(n))+1;l++;
+  }
+  else if(n<0){
+    l=log10(abs(n))+1;
+    l++;
+  }
+  else if(n==0){
+    l=1;
+  }
+  //printf("%zu\n",l);
+  char *gNumber=malloc(sizeof(char)*l);
+  if(gNumber==NULL)exit(-1);
+
+  snprintf(gNumber,l, "%d", N);
+  printf("%s\n",gNumber);
+  return gNumber;
+}
+//tools
+
+
 
 //glyph
 typedef struct {
@@ -316,7 +346,7 @@ void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
 
     b->line[cursor_Line]->data[b->line[cursor_Line]->length]='\0';
     b->line[cursor_Line]->length--;
-    
+    b->totalSizeChars--;
   }
 }
 
@@ -356,8 +386,125 @@ size_t cursor_Pos=0;
 
 
 
+
+
+
+
+//render CUSTOM text////////////////////////////////
+void renderTextA(String *s,int startX, int startY) {
+  int x = startX;
+  int y = startY;
+  for (int i = 0; i < s->length; i++) {
+    const char c = s->data[i];
+    //if (c < 32 || c >= 128) continue; //
+    CharInfo* chInfo = &fontMap[c];
+    {
+      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+      SDL_SetTextureColorMod( fontAtlas,255,255,255);
+      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+    }
+    x += chInfo->width; //
+  }
+}
+//////////////////////////////////////////////////////
+
+
+
+
+
+
+
+typedef struct StringCustom {
+  String str;
+  int textSegs;
+  int *possSegs;
+  int *activeSegs;
+  int XY[2];
+}CustomString;
+
+
+void CustomString_init(CustomString *s,int tn,int as,int x,int y) {
+  string_init(&s->str);
+  s->textSegs=tn;
+  s->possSegs = malloc(sizeof(int) * tn);
+  s->activeSegs = malloc(sizeof(int) * as);
+  s->XY[0] = x;
+  s->XY[1] = y;
+}
+
+void CustomString_Add(CustomString *s, const char *str, int tn, int n, int as,int XXX, int flag) { // flag 0-string 1-int
+  if(flag==0){
+  string_append_str(&s->str, str);
+  s->possSegs[n] = tn;
+  s->activeSegs[n] = as;
+  } else if (flag == 1) {
+    // string_append_str(&s->str, str);
+  char *ptr=getC(XXX);
+  string_append_str(&s->str, ptr);
+  free(ptr);
+  s->possSegs[n] = tn;
+  s->activeSegs[n] = as;
+  }
+}
+
+void CustomString_Update(CustomString *s,const char *str,int tn, int n, int as,int XXX,int flag) {
+  s->str.data[s->activeSegs[n]+1] = '\0';
+  s->str.length = strlen(s->str.data);
+  char *ptr=getC(XXX);
+  string_append_str(&s->str, ptr);
+  free(ptr);
+  s->possSegs[n] = tn;
+  s->activeSegs[n] = as;
+}
+
+
+void CustomString_Render(CustomString *s) {
+  renderTextA(&s->str, s->XY[0], s->XY[1]);//renderCustomLine
+}
+
+void CustomString_free(CustomString *s) {
+  string_free(&s->str);
+  free(s->possSegs);
+  free(s->activeSegs);
+  s->possSegs = NULL;
+  s->activeSegs=NULL;
+}
+
+CustomString cstring;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //init SDL SDL_ttf
 int initSDL() {
+  //#if 1
+  /* Always use X11 on platforms that support it, not native Wayland */
+  //setenv("SDL_VIDEODRIVER", "x11", 1);
+  //SDL_SetHint(SDL_HINT_VIDEODRIVER, "x11");
+  //SDL_SetHint("SDL_FRAMEBUFFER_ACCELERATION","opengl");
+  //SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+  //SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "1");
+  //printf("123456\n");
+  //#endif
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     printf("SDL_Init Error: %s\n", SDL_GetError());
     return 0;
@@ -372,17 +519,57 @@ int initSDL() {
   getWindowGH(&hh);
   int WindowW=(ww*FONT_SIZE);
   int WindowH = (hh * FONT_SIZE);
-  //end info
-  window = SDL_CreateWindow("Text Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowW,WindowH,0);
-  if (!window) {
-    printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
-    return 0;
-  }
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
-  if (!renderer) {
-    printf("SDL_CreateRenderer Error: %s\n", SDL_GetError());
-    return 0;
-  }
+  // end info
+  //
+  //window = SDL_CreateWindow("Text Editor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WindowW,WindowH,SDL_WINDOW_SHOWN);
+  //if (!window) {
+  //  printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
+  //  return 0;
+  //}
+
+  /* // Select render driver */
+  /* // - A render driver that supports HW acceleration is used when available */
+  /* // - Otherwise a render driver supporting software fallback is selected */
+  /* SDL_RendererInfo renderDriverInfo; */
+  /* uint32_t rendererFlags  = SDL_RENDERER_TARGETTEXTURE; */
+  /* int32_t nbRenderDrivers = SDL_GetNumRenderDrivers(), index = 0; */
+
+  /* while (index < nbRenderDrivers) { */
+  
+  /*   if (SDL_GetRenderDriverInfo(index, &renderDriverInfo) == 0) { */
+
+    
+  /*         if (((renderDriverInfo.flags & rendererFlags) == rendererFlags) */
+  /*             && ((renderDriverInfo.flags & SDL_RENDERER_ACCELERATED) == SDL_RENDERER_ACCELERATED)) */
+  /*         { */
+  /*             // Using render driver with HW acceleration */
+  /*             rendererFlags |= SDL_RENDERER_ACCELERATED; */
+  /*             SDL_SetHint(SDL_HINT_RENDER_DRIVER,"software"); */
+  /* 	    printf("%s\n",renderDriverInfo.name); */
+  /*             break; */
+  /*         } */
+  /*     } */
+  /*     ++index; */
+  /* } */
+
+  /*  if (index == nbRenderDrivers) */
+  /* { */
+  /*     // Let SDL use the first render driver supporting software fallback */
+  /*     rendererFlags |= SDL_RENDERER_SOFTWARE; */
+  /*     index = -1; */
+  /* } */
+
+  // SDL_SetHint(SDL_HINT_RENDER_DRIVER, renderDriverInfo.name);
+  // renderer = SDL_CreateRenderer(window, -1,
+  // SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC); if (!renderer) {
+  //   printf("SDL_CreateRenderer Error: %s\n", SDL_GetError());
+  //   return 0;
+  // }
+  // return 1;
+  SDL_CreateWindowAndRenderer(WindowW, WindowH,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC,&window, &renderer);
+  //printf("SDL_CreateWindowAndRenderer() Error: %s\n", SDL_GetError());
+  //return 0;
+  //}
   return 1;
 }
 
@@ -483,11 +670,13 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
     if (e->key.keysym.sym == SDLK_BACKSPACE && cursor_Line >= 0 && cursor_Pos >=0) {
       if(cursor_Pos == 0){
       } else {
-	buffer_backspace_test(&buffer,cursor_Line,cursor_Pos);
+        buffer_backspace_test(&buffer, cursor_Line, cursor_Pos);
+	CustomString_Update(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
 	cursor_Pos--;
       }
     } else if (e->key.keysym.sym == SDLK_HOME) {
-      cursor_Pos =0;
+      cursor_Pos = 0;
+      
     } else if (e->key.keysym.sym == SDLK_END) {
       cursor_Pos=buffer.line[cursor_Line]->length;
     }
@@ -561,25 +750,6 @@ void renderText(int startX, int startY) {
     
   }
 }
-
-//render CUSTOM text////////////////////////////////
-void renderTextA(String *s,int startX, int startY) {
-  int x = startX;
-  int y = startY;
-  for (int i = 0; i < s->length; i++) {
-    const char c = s->data[i];
-    //if (c < 32 || c >= 128) continue; //
-    CharInfo* chInfo = &fontMap[c];
-    {
-      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-      SDL_SetTextureColorMod( fontAtlas,255,255,255);
-      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
-    }
-    x += chInfo->width; //
-  }
-}
-//////////////////////////////////////////////////////
-
 
 //update char and pos
 void updateCharAt(int index, char newChar) {
@@ -670,32 +840,45 @@ void openCurFile(currFile *file,const char* path) {
   }
 }
 
-void closeCurFile(currFile *file) {
-  SDL_RWclose(file->file); // Close the file when done
+
+
+void readFile(currFile *cfile,Buffer *buffer) {
+  //need structure1
+  char buffer1[1024]; // Adjust buffer size as needed
+  char c;
+  int bytesRead;
+  int i = 0;
+
+  
+  while ((bytesRead = SDL_RWread(cfile->file, &c, sizeof(char), 1)) > 0) {
+    if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
+      buffer1[i] = '\n';                         // Null-terminate the string
+      buffer1[i + 1] = '\0';                     // Null-terminate the string
+      /* int len=strlen(buffer1); */
+      /* int q = 0; */
+      /* if (len == 1 || len == 0) { */
+      /* } */
+      /* else{ */
+      /* while (buffer1[q++] != '\0') { */
+      /* 	if(buffer1[q]=='\t')printf("TAB\n"); */
+      /* 	//q++; */
+      /* } */
+      /* } */
+      buffer_append_str(buffer,buffer1);
+      i = 0; // Reset buffer index for next line
+      buffer1[0] = '\0';// Null-terminate the string// 
+      if (c == '\n') continue; // Skip to next character if newline was the trigger
+    }
+    buffer1[i++] = c;
+  }
+  
+  // need structure1
+
 }
 
 
-
-char* getC(int N){
-  int n=N;
-  size_t l;
-  if(n>0){
-    l=log10(abs(n))+1;
-  }
-  else if(n<0){
-    l=log10(abs(n))+1;
-    l++;
-  }
-  else if(n==0){
-    l=1;
-  }
-  //printf("%d\n",l);
-  char *buffer=malloc(sizeof(char)*l);
-  if(buffer==NULL)exit(-1);
-
-  snprintf(buffer,l, "%d", n);
-
-  return buffer;
+void closeCurFile(currFile *file) {
+  SDL_RWclose(file->file); // Close the file when done
 }
 
 
@@ -713,44 +896,35 @@ int main(int argc, char *argv[]) {
   initPanel(&panel);
   buffer_init(&buffer,1);//if open FILE set flag 1, if open scratch set flag 0
 
-  //need structure1
-  char buffer1[1024]; // Adjust buffer size as needed
-  char c;
-  int bytesRead;
-  int i = 0;
+  readFile(&cfile,&buffer);
 
-  
-  while ((bytesRead = SDL_RWread(cfile.file, &c, sizeof(char), 1)) > 0) {
-    if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
-      buffer1[i] = '\n';                         // Null-terminate the string
-      buffer1[i+1] = '\0';// Null-terminate the string
-      buffer_append_str(&buffer,buffer1);
-      i = 0; // Reset buffer index for next line
-      buffer1[0] = '\0';// Null-terminate the string// 
-      if (c == '\n') continue; // Skip to next character if newline was the trigger
-    }
-    buffer1[i++] = c;
-  }
   closeCurFile(&cfile);
-  // need structure1
   
   int running = 1;
 
   SDL_Rect textArea = {0, 0, 800, 575};
 
+
+
+
+  CustomString_init(&cstring, 4, 4, 0, 575);
+  CustomString_Add(&cstring, "Filename: ", 0, 0, 0, 0, 0);
+  CustomString_Add(&cstring, "OpenglSDL2Window5.c ", 1, 1, 9, 0, 0);
+  CustomString_Add(&cstring, "Chars: ", 2, 2, 9+strlen("OpenglSDL2Window5.c "), 0, 0);
+  CustomString_Add(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
   // need structure2
-  String str;
-  string_init(&str);
+  /* String str; */
+  /* string_init(&str); */
 
-  string_append_str(&str, "FileName: ");
+  /* string_append_str(&str, "FileName: "); */
 
-  string_append_str(&str, "OpenglSDL2Window5.c ");
+  /* string_append_str(&str, "OpenglSDL2Window5.c "); */
 
-  string_append_str(&str, "Chars: ");
+  /* string_append_str(&str, "Chars: "); */
 
-  char *ptr=getC(buffer.totalSizeChars);
-  string_append_str(&str, ptr);
-  free(ptr);
+  /* char *ptr=getC(buffer.totalSizeChars); */
+  /* string_append_str(&str, ptr); */
+  /* free(ptr); */
   // need structure2
   
   while (running) {
@@ -784,8 +958,8 @@ int main(int argc, char *argv[]) {
 
       renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
 
-
-      renderTextA(&str, 0, 575);//renderCustomLine
+      CustomString_Render(&cstring);
+      /* renderTextA(&str, 0, 575);//renderCustomLine */
  
       renderPanel(renderer,&panel,0,575);
       SDL_RenderPresent(renderer);
@@ -793,7 +967,8 @@ int main(int argc, char *argv[]) {
       double dt = (double)(1000*(end-start)) / SDL_GetPerformanceFrequency();
     }
   }
-  string_free(&str);
+  CustomString_free(&cstring);
+  /* string_free(&str); */
   buffer_free(&buffer);
   freePanel(&panel);
   freeCursor(&cursor);
