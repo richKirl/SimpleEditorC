@@ -950,7 +950,7 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-// need edit/correction \t//w-s for coloring comments
+// need edit
 // numberslines
 // fixsurfaceFORtext
 // fixposendcursor
