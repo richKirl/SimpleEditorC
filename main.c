@@ -1,16 +1,3 @@
-// scan-build20 clang20 -faddress=sanitizer -g3 OpenglSDL2Window5.c -o
-// OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
-// -lSDL2main -lSDL2_ttf -lm
-
-// clang20 -g3 OpenglSDL2Window5.c -o
-// OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
-// -lSDL2main -lSDL2_ttf -lm
-
-// valgrind ./OpenglSDL2Window5
-// valgrind env SDL_VIDEODRIVER=x11 ./OpenglSDL2Window5 //set driver
-// g3 - for debug for core
-
-
 #include <stddef.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
@@ -54,7 +41,7 @@ char* getC(int N){
   if(gNumber==NULL)exit(-1);
 
   snprintf(gNumber,l, "%d", N);
-  printf("%s\n",gNumber);
+  //printf("%s\n",gNumber);
   return gNumber;
 }
 //tools
@@ -574,7 +561,9 @@ int flagScroll=0;
 void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
   if (e->type == SDL_TEXTINPUT) {
     if (textLength < MAX_TEXT_LENGTH - 1) {
-      buffer_insert_char(&buffer,cursor_Line,cursor_Pos,e->text.text[0]);
+      buffer_insert_char(&buffer, cursor_Line, cursor_Pos, e->text.text[0]);
+      //buffer.totalSizeChars++;
+      //
       cursor_Pos++;
     }
   }
@@ -583,7 +572,7 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       if(cursor_Pos == 0){
       } else {
         buffer_backspace_test(&buffer, cursor_Line, cursor_Pos);
-	CustomString_Update(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
+	//CustomString_Update(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
 	cursor_Pos--;
       }
     } else if (e->key.keysym.sym == SDLK_HOME) {
@@ -622,7 +611,7 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length)
 	? buffer.line[cursor_Line]->length
 	: cursor_Pos;
-      printf("%d %d\n",cursor_Pos,cursor_Line);
+      //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
     else if (e->key.keysym.sym == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
 
@@ -636,9 +625,10 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length)
 	? buffer.line[cursor_Line]->length
 	: cursor_Pos;
-      printf("%d %d\n",cursor_Pos,cursor_Line);
+      //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
   }
+  CustomString_Update(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
 }
 
 //render text
@@ -955,4 +945,16 @@ int main(int argc, char *argv[]) {
 // fixsurfaceFORtext
 // fixposendcursor
 // add menubar
+
+// scan-build20 clang20 -faddress=sanitizer -g3 OpenglSDL2Window5.c -o
+// OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
+// -lSDL2main -lSDL2_ttf -lm
+
+// clang20 -g3 OpenglSDL2Window5.c -o
+// OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
+// -lSDL2main -lSDL2_ttf -lm
+
+// valgrind ./OpenglSDL2Window5
+// valgrind env SDL_VIDEODRIVER=x11 ./OpenglSDL2Window5 //set driver
+// g3 - for debug for core
 
