@@ -946,15 +946,12 @@ int main(int argc, char *argv[]) {
 // fixposendcursor
 // add menubar
 
-// scan-build20 clang20 -faddress=sanitizer -g3 OpenglSDL2Window5.c -o
-// OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
-// -lSDL2main -lSDL2_ttf -lm
+// scan-build20 clang20 -faddress=sanitizer -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
 
-// clang20 -g3 OpenglSDL2Window5.c -o
-// OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
-// -lSDL2main -lSDL2_ttf -lm
+// clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
 
 // valgrind ./OpenglSDL2Window5
 // valgrind env SDL_VIDEODRIVER=x11 ./OpenglSDL2Window5 //set driver
 // g3 - for debug for core
 
+//clang20 -g3 -Wall -Wpedantic -Wextra -Weverything OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
