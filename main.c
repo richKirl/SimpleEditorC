@@ -213,7 +213,6 @@ void buffer_append_str(Buffer* b, const char* str) {
     }
   }
   else{
-  
     //add string
     b->line[b->nlines] = malloc(sizeof(String));
     if (b->line[b->nlines] == NULL) {
@@ -309,7 +308,6 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
     return 0;
   }
 }
-
 
 void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
   if ((b->line[cursor_Line]->data[cursor_Pos - 1]) == '\n') {
@@ -606,11 +604,11 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
     }
     else if (e->key.keysym.sym == SDLK_LEFT && cursor_Pos > 0) {
       cursor_Pos--;
-      printf("%d %d\n",cursor_Pos,cursor_Line);
+      //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
     else if (e->key.keysym.sym == SDLK_RIGHT && cursor_Pos < buffer.line[cursor_Line]->length) {
       cursor_Pos++;
-      printf("%d %d\n",cursor_Pos,cursor_Line);
+      //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
     else if (e->key.keysym.sym == SDLK_UP && cursor_Line > 0) {
       if (cursor_Line - 1 < tempS-41) {
@@ -642,35 +640,104 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
     }
   }
 }
-
+const char* skipSpaces(const char* str) {
+    while (*str) {
+        str++;
+    }
+    return str;
+}
 //render text
 void renderText(int startX, int startY) {
   int x = startX-scrollX;
-  int y = startY-scrollY;
+  int y = startY - scrollY;
+  int comment = 0; // 1 comment 2 include 3 void
+  int cCount=0;
   for (int j = 0; j < buffer.nlines; j++) {
+    comment=0;
     for (int i = 0; i < buffer.line[j]->length; i++) {
       const char c = buffer.line[j]->data[i];
-      //if (c < 32 || c >= 128) continue; //
+      // if (c < 32 || c >= 128) continue; //
+      if (buffer.line[j]->data[i + 1] != NULL) {
+	const char* linePtr = &buffer.line[j]->data[i];
+	linePtr = skipSpaces(linePtr);
+	if (strncmp(&buffer.line[j]->data[i],"//",2)==0) {
+	  comment=1;
+        } else if (strncmp(&buffer.line[j]->data[i], "#include", 8)==0) {
+	  comment=2;
+        } else if ((strncmp(&buffer.line[j]->data[i], "void", 4) == 0||strncmp(&buffer.line[j]->data[i], "char", 4) == 0||strncmp(&buffer.line[j]->data[i], "float", 4) == 0)&&comment==0) {
+	  comment=3;
+        } else if (strncmp(&buffer.line[j]->data[i], "int", 3) == 0&&comment==0){
+          comment = 4;
+        } else if (strncmp(&buffer.line[j]->data[i], "#define", 7) == 0 && comment == 0) {
+          comment = 5;
+        }
+	//else {comment=0;}
+      }
       CharInfo* chInfo = &fontMap[c];
       if(c=='\n'||c==10){ 
 	y+=FONT_SIZE;//like from metrics heigth
 	x=startX;
 	break;
       }
-
-      if (buffer.line[j]->data[0] == '/' && buffer.line[j]->data[1] == '/') {
-	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	SDL_SetTextureColorMod( fontAtlas,0,200,0);
-	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
-      }
-      else{
+      if(comment==0){
 	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
 	SDL_SetTextureColorMod( fontAtlas,255,255,255);
 	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       }
+      else if (comment==1) {
+	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	SDL_SetTextureColorMod( fontAtlas,0,200,0);
+	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+      } else if (comment == 2) {
+        if (cCount == 8){
+          comment = 0;
+          cCount = 0;
+        }
+	else{
+	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	  SDL_SetTextureColorMod( fontAtlas,0,20,200);
+	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+	  cCount++;
+	}
+      } else if (comment == 3) {
+        if (cCount == 4){
+          comment = 0;
+          cCount = 0;
+	}
+	else{
+	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	  SDL_SetTextureColorMod( fontAtlas,0,200,200);
+	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+	  cCount++;
+	}
+      }
+      else if (comment == 4) {
+        if (cCount == 3){
+          comment = 0;
+          cCount = 0;
+	}
+	else{
+	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	  SDL_SetTextureColorMod( fontAtlas,0,200,200);
+	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+	  cCount++;
+	}
+      }
+      else if (comment == 5) {
+        if (cCount == 7){
+          comment = 0;
+          cCount = 0;
+	}
+	else{
+	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+	  SDL_SetTextureColorMod( fontAtlas,0,200,200);
+	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+	  cCount++;
+	}
+      }
+
       x += chInfo->width; //
     }
-    
   }
 }
 
