@@ -640,12 +640,7 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
     }
   }
 }
-const char* skipSpaces(const char* str) {
-    while (*str) {
-        str++;
-    }
-    return str;
-}
+
 //render text
 void renderText(int startX, int startY) {
   int x = startX-scrollX;
@@ -658,8 +653,6 @@ void renderText(int startX, int startY) {
       const char c = buffer.line[j]->data[i];
       // if (c < 32 || c >= 128) continue; //
       if (buffer.line[j]->data[i + 1] != NULL) {
-	const char* linePtr = &buffer.line[j]->data[i];
-	linePtr = skipSpaces(linePtr);
 	if (strncmp(&buffer.line[j]->data[i],"//",2)==0) {
 	  comment=1;
         } else if (strncmp(&buffer.line[j]->data[i], "#include", 8)==0) {
@@ -671,7 +664,6 @@ void renderText(int startX, int startY) {
         } else if (strncmp(&buffer.line[j]->data[i], "#define", 7) == 0 && comment == 0) {
           comment = 5;
         }
-	//else {comment=0;}
       }
       CharInfo* chInfo = &fontMap[c];
       if(c=='\n'||c==10){ 
@@ -692,6 +684,8 @@ void renderText(int startX, int startY) {
         if (cCount == 8){
           comment = 0;
           cCount = 0;
+	  i--;
+	  continue;
         }
 	else{
 	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
@@ -703,6 +697,8 @@ void renderText(int startX, int startY) {
         if (cCount == 4){
           comment = 0;
           cCount = 0;
+	  i--;
+	  continue;
 	}
 	else{
 	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
@@ -715,6 +711,8 @@ void renderText(int startX, int startY) {
         if (cCount == 3){
           comment = 0;
           cCount = 0;
+	  i--;
+	  continue;
 	}
 	else{
 	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
@@ -727,6 +725,8 @@ void renderText(int startX, int startY) {
         if (cCount == 7){
           comment = 0;
           cCount = 0;
+	  i--;
+	  continue;
 	}
 	else{
 	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
