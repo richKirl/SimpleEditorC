@@ -145,9 +145,6 @@ void string_free(String *s) {
   s->capacity = 0;
 }
 ///////////////////////////////////////////////////////////////////////////////////////
-
-
-
 ////////////////////////////////////////////////////////////////////////////////////////
 typedef struct {
   String **line; //pointer to lines
@@ -175,8 +172,8 @@ void buffer_init(Buffer* b,int flag) {
       //add string
       b->line[0] = malloc(sizeof(String));
       if (b->line[0] == NULL) {
-	fprintf(stderr, "Memory allocation failed\n");
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);
       }
       string_init(b->line[0]);
       b->nlines = 1;
@@ -344,11 +341,11 @@ void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
       }
       b->nlines--;
     }
-  }
-  else {
+  } else {
+    //printf("DEL\n");
     memmove(b->line[cursor_Line]->data + (cursor_Pos - 1),
 	    b->line[cursor_Line]->data + cursor_Pos,
-	    strlen(b->line[cursor_Line]->data));
+	    strlen(b->line[cursor_Line]->data)-(cursor_Pos-1));
 
     b->line[cursor_Line]->data[b->line[cursor_Line]->length]='\0';
     b->line[cursor_Line]->length--;
@@ -390,10 +387,6 @@ Buffer buffer;
 size_t cursor_Line=0;
 size_t cursor_Pos=0;
 
-
-
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //render CUSTOM text////////////////////////////////
@@ -413,12 +406,6 @@ void renderTextA(String *s,int startX, int startY) {
   }
 }
 //////////////////////////////////////////////////////
-
-
-
-
-
-
 
 typedef struct StringCustom {
   String str;
@@ -440,16 +427,16 @@ void CustomString_init(CustomString *s,int tn,int as,int x,int y) {
 
 void CustomString_Add(CustomString *s, const char *str, int tn, int n, int as,int XXX, int flag) { // flag 0-string 1-int
   if(flag==0){
-  string_append_str(&s->str, str);
-  s->possSegs[n] = tn;
-  s->activeSegs[n] = as;
+    string_append_str(&s->str, str);
+    s->possSegs[n] = tn;
+    s->activeSegs[n] = as;
   } else if (flag == 1) {
     // string_append_str(&s->str, str);
-  char *ptr=getC(XXX);
-  string_append_str(&s->str, ptr);
-  free(ptr);
-  s->possSegs[n] = tn;
-  s->activeSegs[n] = as;
+    char *ptr=getC(XXX);
+    string_append_str(&s->str, ptr);
+    free(ptr);
+    s->possSegs[n] = tn;
+    s->activeSegs[n] = as;
   }
 }
 
@@ -477,12 +464,7 @@ void CustomString_free(CustomString *s) {
 }
 
 CustomString cstring;
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 //init SDL SDL_ttf
 int initSDL() {
 
@@ -502,9 +484,6 @@ int initSDL() {
   int WindowH = (hh * FONT_SIZE);
 
   SDL_CreateWindowAndRenderer(WindowW, WindowH,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC,&window, &renderer);
-  //printf("SDL_CreateWindowAndRenderer() Error: %s\n", SDL_GetError());
-  //return 0;
-  //}
   return 1;
 }
 
@@ -627,19 +606,25 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
     }
     else if (e->key.keysym.sym == SDLK_LEFT && cursor_Pos > 0) {
       cursor_Pos--;
+      printf("%d %d\n",cursor_Pos,cursor_Line);
     }
     else if (e->key.keysym.sym == SDLK_RIGHT && cursor_Pos < buffer.line[cursor_Line]->length) {
       cursor_Pos++;
+      printf("%d %d\n",cursor_Pos,cursor_Line);
     }
     else if (e->key.keysym.sym == SDLK_UP && cursor_Line > 0) {
       if (cursor_Line - 1 < tempS-41) {
 	scrollY-=FONT_SIZE;
         cursor_Line--;
-	tempS--;
+        tempS--;
+	
       }
       else cursor_Line--;
       //printf("%d\n",cursor_Line);
-      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
+      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length)
+	? buffer.line[cursor_Line]->length
+	: cursor_Pos;
+      printf("%d %d\n",cursor_Pos,cursor_Line);
     }
     else if (e->key.keysym.sym == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
 
@@ -650,7 +635,10 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       }
       else cursor_Line++;
       //printf("%d\n",cursor_Line);
-      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length) ? buffer.line[cursor_Line]->length : cursor_Pos;
+      cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length)
+	? buffer.line[cursor_Line]->length
+	: cursor_Pos;
+      printf("%d %d\n",cursor_Pos,cursor_Line);
     }
   }
 }
@@ -775,40 +763,35 @@ void openCurFile(currFile *file,const char* path) {
   }
 }
 
-
-
 void readFile(currFile *cfile,Buffer *buffer) {
-  //need structure1
   char buffer1[1024]; // Adjust buffer size as needed
   char c;
   int bytesRead;
   int i = 0;
 
-  
+
   while ((bytesRead = SDL_RWread(cfile->file, &c, sizeof(char), 1)) > 0) {
+    
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
       buffer1[i] = '\n';                         // Null-terminate the string
       buffer1[i + 1] = '\0';                     // Null-terminate the string
-      /* int len=strlen(buffer1); */
-      /* int q = 0; */
-      /* if (len == 1 || len == 0) { */
-      /* } */
-      /* else{ */
-      /* while (buffer1[q++] != '\0') { */
-      /* 	if(buffer1[q]=='\t')printf("TAB\n"); */
-      /* 	//q++; */
-      /* } */
-      /* } */
+
+      int len=strlen(buffer1);
+      int q = 0;
+
       buffer_append_str(buffer,buffer1);
       i = 0; // Reset buffer index for next line
-      buffer1[0] = '\0';// Null-terminate the string// 
+      buffer1[0] = '\0'; // Null-terminate the string//
       if (c == '\n') continue; // Skip to next character if newline was the trigger
+    }
+    else if(c=='\t') {
+      buffer1[i++]=' ';
+      buffer1[i++]=' ';
+      buffer1[i++]=' ';
+      buffer1[i++]=' ';
     }
     buffer1[i++] = c;
   }
-  
-  // need structure1
-
 }
 
 
@@ -863,6 +846,7 @@ int main(int argc, char *argv[]) {
       }
       is_event = SDL_PollEvent(&e);
     }
+    
     if (event) {
 
       SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
@@ -878,8 +862,9 @@ int main(int argc, char *argv[]) {
 
       CustomString_Render(&cstring);
 
- 
-      renderPanel(renderer,&panel,0,575);
+
+      renderPanel(renderer, &panel, 0, 575);
+      
       SDL_RenderPresent(renderer);
       Uint32 end = SDL_GetPerformanceCounter();
       double dt = (double)(1000*(end-start)) / SDL_GetPerformanceFrequency();
