@@ -812,7 +812,7 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       cursor_Pos = 0;
     }
     else if(e->key.keysym.sym == SDLK_PAGEUP){
-      if (cursor_Line - 41 < buffer.nlines) {
+      if (cursor_Line - 41 > 0 && cursor_Line - 41 < buffer.nlines) {
 	scrollY-=FONT_SIZE*41;
         cursor_Line-=41;
         tempS-=41;
@@ -1051,9 +1051,6 @@ void readFile(currFile *cfile,Buffer *buffer) {
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
       buffer1[i] = '\n';                         // Null-terminate the string
       buffer1[i + 1] = '\0';                     // Null-terminate the string
-
-      int len=strlen(buffer1);
-      int q = 0;
 
       buffer_append_str(buffer,buffer1);
       i = 0; // Reset buffer index for next line
