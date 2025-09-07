@@ -5,12 +5,290 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <uchar.h>
 
-
+//GhbdtnПривет😊
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define FONT_SIZE 14
 #define MAX_TEXT_LENGTH 1024
+
+
+////////////////////////////////
+// need edit
+// numberslines
+// fixsurfaceFORtext
+// fixposendcursor
+// add menubar
+
+// scan-build20 clang20 -faddress=sanitizer
+// -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5
+// -I/usr/local/include -L/usr/local/lib -DSHM
+// -lSDL2 -lSDL2main -lSDL2_ttf -lm
+
+// clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5
+// -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2
+// -lSDL2main -lSDL2_ttf -lm
+
+// valgrind ./OpenglSDL2Window5
+// valgrind env SDL_VIDEODRIVER=x11 ./OpenglSDL2Window5 //set driver
+// g3 - for debug for core
+
+// clang20 -Wall -Wpedantic -Wextra -Weverything
+//  -g3 -lm -fsanitize=undefined OpenglSDL2Window5.c
+// -o OpenglSDL2Window5 -I/usr/local/include
+// -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
+
+//////////////////////////////////////////////////////////////
+//tools
+void getWindowGW(int *w);
+void getWindowGH(int *h);
+
+
+// extract int number from int to string rep
+char* getC(int N);
+//tools
+///////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////
+//glyph
+typedef struct {
+  char ch;
+  SDL_Rect srcRect; //rect
+  int width;        //width
+} CharInfo;
+
+int fWidth, fHeight;
+
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+TTF_Font* font = NULL;
+SDL_Texture* fontAtlas = NULL;
+
+int scrollX = 0;
+int scrollY = 0;
+SDL_Rect tempRect={ 0, 0, 800, 600};
+int tempS = 41;
+
+
+CharInfo fontMap[256]; //atlas
+int textLength = 0;
+///////////////////////////////////////////////////////////////////
+
+
+typedef struct {
+  char *data;
+  size_t length;
+  size_t capacity;
+} String;
+
+void string_init(String *s);
+
+int string_append_str(String *s, const char *str);
+
+int string_append_char(String *s, char c);
+
+void string_free(String *s);
+///////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
+typedef struct {
+  String **line; //pointer to lines
+  size_t nlines; //number of lines
+  size_t capacity; //
+  size_t currLine;
+  size_t totalSizeChars;
+  int stateFlag;//0 scratch,1 openFile
+} Buffer;
+
+void buffer_init(Buffer* b,int flag);
+//add string
+void buffer_append_str(Buffer* b, const char* str);
+
+int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c);
+
+void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos);
+
+
+String* buffer_get_line(const Buffer* b, size_t index);
+
+void buffer_print(const Buffer* b);
+//free buffer
+void buffer_free(Buffer* b);
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String text;
+
+Buffer buffer;
+size_t cursor_Line=0;
+size_t cursor_Pos=0;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//render CUSTOM text////////////////////////////////
+void renderTextA(String *s,int startX, int startY);
+//////////////////////////////////////////////////////
+
+typedef struct StringCustom {
+  String str;
+  int textSegs;
+  int *possSegs;
+  int *activeSegs;
+  int XY[2];
+}CustomString;
+
+
+void CustomString_init(CustomString *s,int tn,int as,int x,int y);
+
+void CustomString_Add(CustomString *s, const char *str, int tn, int n, int as,int XXX, int flag);
+
+void CustomString_Update(CustomString *s,const char *str,int tn, int n, int as,int XXX,int flag);
+
+
+void CustomString_Render(CustomString *s);
+
+void CustomString_free(CustomString *s);
+
+CustomString cstring;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//init SDL SDL_ttf
+int initSDL();
+
+//create Texture Atlas
+int createFontAtlas();
+
+//init start text
+void initText();
+int countScrollBack = 41;
+int flagScroll=0;
+//work with input
+void handleInput(SDL_Event* e,SDL_Renderer *renderer);
+
+//render text
+void renderText(int startX, int startY);
+
+//update char and pos
+void updateCharAt(int index, char newChar) ;
+
+typedef struct MicroPanel{
+  SDL_Texture *panelTexture;
+  SDL_Rect panel;
+}Panel;
+
+void initPanel(Panel *p);
+
+void renderPanel(SDL_Renderer *renderer,Panel *p,int x,int y);
+void freePanel(Panel *p);
+
+typedef struct MicroCursor{
+  SDL_Texture *cursorTexture;
+  SDL_Rect cursorRect;
+}Cursor;
+
+void initCursor(Cursor *c);
+
+void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y);
+
+void freeCursor(Cursor *c);
+
+typedef struct dirFile{
+  SDL_RWops *file;
+}currFile;
+
+void openCurFile(currFile *file,const char* path);
+
+void readFile(currFile *cfile,Buffer *buffer);
+
+
+void closeCurFile(currFile *file);
+
+
+
+
+int main(int argc, char *argv[]) {
+  currFile cfile;
+  openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file//need open from arg/from hotkey/from menu
+  
+  if (!initSDL()) return 1;
+  if (!createFontAtlas()) return 1;
+  Cursor cursor;
+  Panel panel;
+  initCursor(&cursor);
+  initPanel(&panel);
+  buffer_init(&buffer,1);//if open FILE set flag 1, if open scratch set flag 0
+
+  readFile(&cfile,&buffer);
+
+  closeCurFile(&cfile);
+  
+  int running = 1;
+
+  SDL_Rect textArea = {0, 0, 800, 575};
+
+  CustomString_init(&cstring, 4, 4, 0, 575);
+  CustomString_Add(&cstring, "Filename: ", 0, 0, 0, 0, 0);
+  CustomString_Add(&cstring, "OpenglSDL2Window5.c ", 1, 1, 9, 0, 0);
+  CustomString_Add(&cstring, "Chars: ", 2, 2, 9+strlen("OpenglSDL2Window5.c "), 0, 0);
+  CustomString_Add(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
+
+  while (running) {
+    Uint32 start = SDL_GetPerformanceCounter();
+    ///dancing with event for self task state process on the cpu//like tracker state program
+    int is_event;
+    SDL_Event e;
+
+    is_event = SDL_WaitEvent(&e);
+
+    int event = is_event;
+    
+    while (is_event) {
+      if (e.type == SDL_QUIT) {
+	running = 0;
+      } else if(e.type == SDL_TEXTINPUT||e.type == SDL_KEYDOWN) {
+	handleInput(&e,renderer);
+      }
+      is_event = SDL_PollEvent(&e);
+    }
+    
+    if (event) {
+
+      SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
+      SDL_RenderClear(renderer);
+
+
+
+      SDL_RenderSetClipRect(renderer, &textArea);
+      renderText(0, 0);//renderTextSpaceBufferLines
+      SDL_RenderSetClipRect(renderer, NULL);
+
+      renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
+
+      CustomString_Render(&cstring);
+
+
+      renderPanel(renderer, &panel, 0, 575);
+      
+      SDL_RenderPresent(renderer);
+      Uint32 end = SDL_GetPerformanceCounter();
+      double dt =
+          (double)(1000 * (end - start)) / SDL_GetPerformanceFrequency();
+
+      SDL_Delay(dt);
+    }
+    
+  }
+  CustomString_free(&cstring);
+  buffer_free(&buffer);
+  freePanel(&panel);
+  freeCursor(&cursor);
+  SDL_DestroyTexture(fontAtlas);
+  TTF_CloseFont(font);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  TTF_Quit();
+  SDL_Quit();
+
+  return 0;
+}
 
 //////////////////////////////////////////////////////////////
 //tools
@@ -46,38 +324,6 @@ char* getC(int N){
 }
 //tools
 ///////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////
-//glyph
-typedef struct {
-  char ch;
-  SDL_Rect srcRect; //rect
-  int width;        //width
-} CharInfo;
-
-int fWidth, fHeight;
-
-SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
-TTF_Font* font = NULL;
-SDL_Texture* fontAtlas = NULL;
-
-int scrollX = 0;
-int scrollY = 0;
-SDL_Rect tempRect={ 0, 0, 800, 600};
-int tempS = 41;
-
-
-CharInfo fontMap[256]; //atlas
-int textLength = 0;
-///////////////////////////////////////////////////////////////////
-
-
-typedef struct {
-  char *data;
-  size_t length;
-  size_t capacity;
-} String;
 
 void string_init(String *s) {
   s->length = 0;
@@ -133,14 +379,6 @@ void string_free(String *s) {
 }
 ///////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////
-typedef struct {
-  String **line; //pointer to lines
-  size_t nlines; //number of lines
-  size_t capacity; //
-  size_t currLine;
-  size_t totalSizeChars;
-  int stateFlag;//0 scratch,1 openFile
-} Buffer;
 
 void buffer_init(Buffer* b,int flag) {
   b->nlines = 0;
@@ -316,8 +554,6 @@ void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
       //copy to current
       memcpy(line->data + line->length, nextLine->data, nextLine->length);
       line->length = newLength;
-      //line->data[line->length] = '\n';
-      //line->data[line->length] = '\0';
 
       //delete
       free(nextLine);
@@ -366,12 +602,6 @@ void buffer_free(Buffer* b) {
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String text;
-
-Buffer buffer;
-size_t cursor_Line=0;
-size_t cursor_Pos=0;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //render CUSTOM text////////////////////////////////
@@ -391,15 +621,6 @@ void renderTextA(String *s,int startX, int startY) {
   }
 }
 //////////////////////////////////////////////////////
-
-typedef struct StringCustom {
-  String str;
-  int textSegs;
-  int *possSegs;
-  int *activeSegs;
-  int XY[2];
-}CustomString;
-
 
 void CustomString_init(CustomString *s,int tn,int as,int x,int y) {
   string_init(&s->str);
@@ -448,7 +669,7 @@ void CustomString_free(CustomString *s) {
   s->activeSegs=NULL;
 }
 
-CustomString cstring;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //init SDL SDL_ttf
 int initSDL() {
@@ -506,15 +727,15 @@ int createFontAtlas() {
 
   SDL_Rect destRect;
   //fill atlas
-  for (int c = 32; c < 128; c++) {
-    char ch = (char)c;
+  for (size_t c = 32; c < 128; c++) {
+    char32_t ch = c;
     //render surface
-    SDL_Surface* glyphSurface = TTF_RenderGlyph32_Shaded(font, ch, (SDL_Color){255,255,255,255},(SDL_Color){0,0,0,0});
+    SDL_Surface* glyphSurface = TTF_RenderGlyph32_Shaded(font, c, (SDL_Color){255,255,255,255},(SDL_Color){0,0,0,0});//
     if (!glyphSurface) {
       printf("TTF_RenderGlyph_Blended Error: %s\n", TTF_GetError());
       continue;
     }
-    int index = c - 32;
+    int index = c;
     int row = index / (16+40);
     int col = index % (16+40);
     if((c>='a'&&c<='z')||(c=='\\')){
@@ -555,8 +776,7 @@ void initText() {
   string_init(&text);
   string_append_str(&text, initial);
 }
-int countScrollBack = 41;
-int flagScroll=0;
+
 //work with input
 void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
   if (e->type == SDL_TEXTINPUT) {
@@ -590,6 +810,19 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, '\n');
       cursor_Line++;
       cursor_Pos = 0;
+    }
+    else if(e->key.keysym.sym == SDLK_PAGEUP){
+      if (cursor_Line - 41 < buffer.nlines) {
+	scrollY-=FONT_SIZE*41;
+        cursor_Line-=41;
+        tempS-=41;
+      }
+    } else if (e->key.keysym.sym == SDLK_PAGEDOWN) {
+      if (cursor_Line + 41 < buffer.nlines) {
+	scrollY+=FONT_SIZE*41;
+        cursor_Line+=41;
+        tempS+=41;
+      }
     }
     else if (e->key.keysym.sym == SDLK_LEFT && cursor_Pos > 0) {
       cursor_Pos--;
@@ -736,11 +969,6 @@ void updateCharAt(int index, char newChar) {
   if (index < 0 || index >= textLength) return;
 }
 
-typedef struct MicroPanel{
-  SDL_Texture *panelTexture;
-  SDL_Rect panel;
-}Panel;
-
 void initPanel(Panel *p) {
   int atlasWidth = 800;
   int atlasHeight = 25;
@@ -768,11 +996,6 @@ void renderPanel(SDL_Renderer *renderer,Panel *p,int x,int y){
 void freePanel(Panel *p) {
   SDL_DestroyTexture(p->panelTexture);
 }
-
-typedef struct MicroCursor{
-  SDL_Texture *cursorTexture;
-  SDL_Rect cursorRect;
-}Cursor;
 
 void initCursor(Cursor *c){
   int atlasWidth = 16;
@@ -804,10 +1027,6 @@ void freeCursor(Cursor *c){
   SDL_DestroyTexture(c->cursorTexture);
 }
 
-typedef struct dirFile{
-  SDL_RWops *file;
-}currFile;
-
 void openCurFile(currFile *file,const char* path) {
   file->file = SDL_RWFromFile(path, "r");//"OpenglSDL2Window5.c"
   if (file == NULL) {
@@ -821,13 +1040,13 @@ void openCurFile(currFile *file,const char* path) {
 }
 
 void readFile(currFile *cfile,Buffer *buffer) {
-  char buffer1[1024]; // Adjust buffer size as needed
-  char c;
+  unsigned char buffer1[1024]; // Adjust buffer size as needed
+  unsigned char c;
   int bytesRead;
   int i = 0;
 
 
-  while ((bytesRead = SDL_RWread(cfile->file, &c, sizeof(char), 1)) > 0) {
+  while ((bytesRead = SDL_RWread(cfile->file, &c, sizeof(unsigned char), 1)) > 0) {
     
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
       buffer1[i] = '\n';                         // Null-terminate the string
@@ -856,102 +1075,3 @@ void closeCurFile(currFile *file) {
   SDL_RWclose(file->file); // Close the file when done
 }
 
-
-
-
-int main(int argc, char *argv[]) {
-  currFile cfile;
-  openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file//need open from arg/from hotkey/from menu
-  
-  if (!initSDL()) return 1;
-  if (!createFontAtlas()) return 1;
-  Cursor cursor;
-  Panel panel;
-  initCursor(&cursor);
-  initPanel(&panel);
-  buffer_init(&buffer,1);//if open FILE set flag 1, if open scratch set flag 0
-
-  readFile(&cfile,&buffer);
-
-  closeCurFile(&cfile);
-  
-  int running = 1;
-
-  SDL_Rect textArea = {0, 0, 800, 575};
-
-  CustomString_init(&cstring, 4, 4, 0, 575);
-  CustomString_Add(&cstring, "Filename: ", 0, 0, 0, 0, 0);
-  CustomString_Add(&cstring, "OpenglSDL2Window5.c ", 1, 1, 9, 0, 0);
-  CustomString_Add(&cstring, "Chars: ", 2, 2, 9+strlen("OpenglSDL2Window5.c "), 0, 0);
-  CustomString_Add(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
-
-  while (running) {
-    Uint32 start = SDL_GetPerformanceCounter();
-    ///dancing with event for self task state process on the cpu//like tracker state program
-    int is_event;
-    SDL_Event e;
-
-    is_event = SDL_WaitEvent(&e);
-
-    int event = is_event;
-    
-    while (is_event) {
-      if (e.type == SDL_QUIT) {
-	running = 0;
-      } else {
-	handleInput(&e,renderer);
-      }
-      is_event = SDL_PollEvent(&e);
-    }
-    
-    if (event) {
-
-      SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
-      SDL_RenderClear(renderer);
-
-
-
-      SDL_RenderSetClipRect(renderer, &textArea);
-      renderText(0, 0);//renderTextSpaceBufferLines
-      SDL_RenderSetClipRect(renderer, NULL);
-
-      renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
-
-      CustomString_Render(&cstring);
-
-
-      renderPanel(renderer, &panel, 0, 575);
-      
-      SDL_RenderPresent(renderer);
-      Uint32 end = SDL_GetPerformanceCounter();
-      double dt = (double)(1000*(end-start)) / SDL_GetPerformanceFrequency();
-    }
-  }
-  CustomString_free(&cstring);
-  buffer_free(&buffer);
-  freePanel(&panel);
-  freeCursor(&cursor);
-  SDL_DestroyTexture(fontAtlas);
-  TTF_CloseFont(font);
-  SDL_DestroyRenderer(renderer);
-  SDL_DestroyWindow(window);
-  TTF_Quit();
-  SDL_Quit();
-
-  return 0;
-}
-// need edit
-// numberslines
-// fixsurfaceFORtext
-// fixposendcursor
-// add menubar
-
-// scan-build20 clang20 -faddress=sanitizer -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
-
-// clang20 -g3 OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
-
-// valgrind ./OpenglSDL2Window5
-// valgrind env SDL_VIDEODRIVER=x11 ./OpenglSDL2Window5 //set driver
-// g3 - for debug for core
-
-//clang20 -g3 -Wall -Wpedantic -Wextra -Weverything OpenglSDL2Window5.c -o OpenglSDL2Window5 -I/usr/local/include -L/usr/local/lib -DSHM -lSDL2 -lSDL2main -lSDL2_ttf -lm
