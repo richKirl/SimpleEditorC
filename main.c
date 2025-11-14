@@ -1,7 +1,8 @@
+#include <math.h>
 #include <stddef.h>
-#define SDL_MAIN_HANDLED
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+// #define SDL_MAIN_HANDLED
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -54,7 +55,7 @@ char* getC(int N);
 //glyph
 typedef struct {
   char ch;
-  SDL_Rect srcRect; //rect
+  SDL_FRect srcRect; //rect
   int width;        //width
 } CharInfo;
 
@@ -191,7 +192,7 @@ void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y);
 void freeCursor(Cursor *c);
 
 typedef struct dirFile{
-  SDL_RWops *file;
+  SDL_IOStream *file;
 }currFile;
 
 void openCurFile(currFile *file,const char* path);
@@ -206,8 +207,8 @@ void closeCurFile(currFile *file);
 
 int main(int argc, char *argv[]) {
   currFile cfile;
-  openCurFile(&cfile, "OpenglSDL2Window5.c");//test file like self file//need open from arg/from hotkey/from menu
-  
+  openCurFile(&cfile, "../../main.c");//test file like self file//need open from arg/from hotkey/from menu
+
   if (!initSDL()) return 1;
   if (!createFontAtlas()) return 1;
   Cursor cursor;
@@ -219,7 +220,7 @@ int main(int argc, char *argv[]) {
   readFile(&cfile,&buffer);
 
   closeCurFile(&cfile);
-  
+
   int running = 1;
 
   SDL_Rect textArea = {0, 0, 800, 575};
@@ -239,16 +240,16 @@ int main(int argc, char *argv[]) {
     is_event = SDL_WaitEvent(&e);
 
     int event = is_event;
-    
+
     while (is_event) {
-      if (e.type == SDL_QUIT) {
-	running = 0;
-      } else if(e.type == SDL_TEXTINPUT||e.type == SDL_KEYDOWN) {
-	handleInput(&e,renderer);
+      if (e.type == SDL_EVENT_QUIT) {
+        running = 0;
+      } else if(e.type == SDL_EVENT_TEXT_INPUT||e.type == SDL_EVENT_KEY_DOWN) {
+        handleInput(&e,renderer);
       }
       is_event = SDL_PollEvent(&e);
     }
-    
+
     if (event) {
 
       SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
@@ -256,9 +257,9 @@ int main(int argc, char *argv[]) {
 
 
 
-      SDL_RenderSetClipRect(renderer, &textArea);
+      SDL_SetRenderClipRect(renderer, &textArea);
       renderText(0, 0);//renderTextSpaceBufferLines
-      SDL_RenderSetClipRect(renderer, NULL);
+      SDL_SetRenderClipRect(renderer, NULL);
 
       renderCursor(renderer, &cursor, cursor_Pos, cursor_Line);
 
@@ -266,7 +267,7 @@ int main(int argc, char *argv[]) {
 
 
       renderPanel(renderer, &panel, 0, 575);
-      
+
       SDL_RenderPresent(renderer);
       Uint32 end = SDL_GetPerformanceCounter();
       double dt =
@@ -274,7 +275,7 @@ int main(int argc, char *argv[]) {
 
       SDL_Delay(dt);
     }
-    
+
   }
   CustomString_free(&cstring);
   buffer_free(&buffer);
@@ -494,9 +495,9 @@ int buffer_insert_char(Buffer *b, size_t line_index, size_t position, char c) {
       size_t new_capacity = b->capacity * 2;
       String **new_line_array = realloc(b->line, sizeof(String*) * new_capacity);
       if (new_line_array == NULL) {
-	string_free(new_line);
-	free(new_line);
-	return -1;
+        string_free(new_line);
+        free(new_line);
+        return -1;
       }
       b->line = new_line_array;
       b->capacity = new_capacity;
@@ -547,8 +548,8 @@ void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
       size_t newLength = line->length + nextLine->length;
       line->data = realloc(line->data, newLength + 1);
       if (line->data == NULL) {
-	//error realloc
-	return;
+        //error realloc
+        return;
       }
 
       //copy to current
@@ -558,15 +559,15 @@ void buffer_backspace_test(Buffer *b,int cursor_Line,int cursor_Pos) {
       //delete
       free(nextLine);
       for (int i = cursor_Line + 1; i < b->nlines - 1; ++i) {
-	b->line[i] = b->line[i + 1];
+        b->line[i] = b->line[i + 1];
       }
       b->nlines--;
     }
   } else {
     //printf("DEL\n");
     memmove(b->line[cursor_Line]->data + (cursor_Pos - 1),
-	    b->line[cursor_Line]->data + cursor_Pos,
-	    strlen(b->line[cursor_Line]->data)-(cursor_Pos-1));
+            b->line[cursor_Line]->data + cursor_Pos,
+            strlen(b->line[cursor_Line]->data)-(cursor_Pos-1));
 
     b->line[cursor_Line]->data[b->line[cursor_Line]->length]='\0';
     b->line[cursor_Line]->length--;
@@ -613,9 +614,9 @@ void renderTextA(String *s,int startX, int startY) {
     //if (c < 32 || c >= 128) continue; //
     CharInfo* chInfo = &fontMap[c];
     {
-      SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+      SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
       SDL_SetTextureColorMod( fontAtlas,255,255,255);
-      SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+      SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
     }
     x += chInfo->width; //
   }
@@ -674,12 +675,12 @@ void CustomString_free(CustomString *s) {
 //init SDL SDL_ttf
 int initSDL() {
 
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    printf("SDL_Init Error: %s\n", SDL_GetError());
-    return 0;
-  }
-  if (TTF_Init() != 0) {
-    printf("TTF_Init Error: %s\n", TTF_GetError());
+if (!SDL_Init(SDL_INIT_VIDEO)) {
+     SDL_Log("SDL_Init failed: %s", SDL_GetError());
+     return -1;
+}
+  if (!TTF_Init()) {
+    printf("TTF_Init Error: %s\n", SDL_GetError());
     return 0;
   }
   //start info
@@ -689,7 +690,7 @@ int initSDL() {
   int WindowW=(ww*FONT_SIZE);
   int WindowH = (hh * FONT_SIZE);
 
-  SDL_CreateWindowAndRenderer(WindowW, WindowH,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC,&window, &renderer);
+  SDL_CreateWindowAndRenderer("Test",WindowW, WindowH,SDL_WINDOW_RESIZABLE,&window, &renderer);
   return 1;
 }
 
@@ -697,13 +698,13 @@ int initSDL() {
 int createFontAtlas() {
   font = TTF_OpenFont("consola.ttf", FONT_SIZE);
   if (!font) {
-    printf("TTF_OpenFont Error: %s\n", TTF_GetError());
+    printf("TTF_OpenFont Error: %s\n",SDL_GetError());
     return 0;
   }
   // this is just for debug time
   //start
   int fx,fy,mx,my,ma;
-  TTF_GlyphMetrics32(font, 'S', &fx, &mx, &fy, &my, &ma);
+  TTF_GetGlyphMetrics(font, 'S', &fx, &mx, &fy, &my, &ma);
   fWidth = mx - fx;
   fHeight = my - fy;
   //SDL_Log("%d %d %d\n", fWidth, fHeight, ma);
@@ -711,28 +712,20 @@ int createFontAtlas() {
   //create surface atlas
   int atlasWidth = (16+40)*FONT_SIZE;
   int atlasHeight = (16+40)*FONT_SIZE;
-  SDL_Surface* surface = SDL_CreateRGBSurface(
-					      0,
-					      atlasWidth,
-					      atlasHeight,
-					      32,
-					      0x00FF0000,
-					      0x0000FF00,
-					      0x000000FF,
-					      0xFF000000);
+  SDL_Surface* surface = SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_BGR24);
   if (!surface) {
     printf("SDL_CreateRGBSurface Error: %s\n", SDL_GetError());
     return 0;
   }
 
-  SDL_Rect destRect;
+  SDL_FRect destRect;
   //fill atlas
   for (size_t c = 32; c < 128; c++) {
     char32_t ch = c;
     //render surface
-    SDL_Surface* glyphSurface = TTF_RenderGlyph32_Shaded(font, c, (SDL_Color){255,255,255,255},(SDL_Color){0,0,0,0});//
+    SDL_Surface* glyphSurface = TTF_RenderGlyph_Shaded(font, c, (SDL_Color){255,255,255,255},(SDL_Color){0,0,0,0});//
     if (!glyphSurface) {
-      printf("TTF_RenderGlyph_Blended Error: %s\n", TTF_GetError());
+      printf("TTF_RenderGlyph_Blended Error: %s\n", SDL_GetError());
       continue;
     }
     int index = c;
@@ -757,12 +750,12 @@ int createFontAtlas() {
     fontMap[c].ch = ch;
     fontMap[c].srcRect = destRect;
     fontMap[c].width = glyphSurface->w; //
-    SDL_FreeSurface(glyphSurface);
+    SDL_DestroySurface(glyphSurface);
   }
 
   //create texture from surface
   fontAtlas = SDL_CreateTextureFromSurface(renderer, surface);
-  SDL_FreeSurface(surface);
+  SDL_DestroySurface(surface);
   if (!fontAtlas) {
     printf("SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
     return 0;
@@ -779,7 +772,7 @@ void initText() {
 
 //work with input
 void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
-  if (e->type == SDL_TEXTINPUT) {
+  if (e->type == SDL_EVENT_TEXT_INPUT) {
     if (textLength < MAX_TEXT_LENGTH - 1) {
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, e->text.text[0]);
       //buffer.totalSizeChars++;
@@ -787,77 +780,77 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
       cursor_Pos++;
     }
   }
-  else if (e->type == SDL_KEYDOWN) {
-    if (e->key.keysym.sym == SDLK_BACKSPACE && cursor_Line >= 0 && cursor_Pos >=0) {
+  else if (e->type == SDL_EVENT_KEY_DOWN) {
+    if (e->key.key == SDLK_BACKSPACE && cursor_Line >= 0 && cursor_Pos >=0) {
       if(cursor_Pos == 0){
       } else {
         buffer_backspace_test(&buffer, cursor_Line, cursor_Pos);
-	//CustomString_Update(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
-	cursor_Pos--;
+        //CustomString_Update(&cstring,NULL,3,3,9+strlen("OpenglSDL2Window5.c Chars: "),buffer.totalSizeChars,1);
+        cursor_Pos--;
       }
-    } else if (e->key.keysym.sym == SDLK_HOME) {
+    } else if (e->key.key == SDLK_HOME) {
       cursor_Pos = 0;
-      
-    } else if (e->key.keysym.sym == SDLK_END) {
+
+    } else if (e->key.key == SDLK_END) {
       cursor_Pos=buffer.line[cursor_Line]->length;
     }
-    else if(e->key.keysym.sym == SDLK_TAB){
+    else if(e->key.key == SDLK_TAB){
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, ' ');
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, ' ');
       cursor_Pos+=2;
     }
-    else if(e->key.keysym.sym == SDLK_RETURN){
+    else if(e->key.key == SDLK_RETURN){
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, '\n');
       cursor_Line++;
       cursor_Pos = 0;
     }
-    else if(e->key.keysym.sym == SDLK_PAGEUP){
+    else if(e->key.key == SDLK_PAGEUP){
       if (cursor_Line - 41 > 0 && cursor_Line - 41 < buffer.nlines) {
-	scrollY-=FONT_SIZE*41;
+        scrollY-=FONT_SIZE*41;
         cursor_Line-=41;
         tempS-=41;
       }
-    } else if (e->key.keysym.sym == SDLK_PAGEDOWN) {
+    } else if (e->key.key == SDLK_PAGEDOWN) {
       if (cursor_Line + 41 < buffer.nlines) {
-	scrollY+=FONT_SIZE*41;
+        scrollY+=FONT_SIZE*41;
         cursor_Line+=41;
         tempS+=41;
       }
     }
-    else if (e->key.keysym.sym == SDLK_LEFT && cursor_Pos > 0) {
+    else if (e->key.key == SDLK_LEFT && cursor_Pos > 0) {
       cursor_Pos--;
       //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
-    else if (e->key.keysym.sym == SDLK_RIGHT && cursor_Pos < buffer.line[cursor_Line]->length) {
+    else if (e->key.key == SDLK_RIGHT && cursor_Pos < buffer.line[cursor_Line]->length) {
       cursor_Pos++;
       //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
-    else if (e->key.keysym.sym == SDLK_UP && cursor_Line > 0) {
+    else if (e->key.key == SDLK_UP && cursor_Line > 0) {
       if (cursor_Line - 1 < tempS-41) {
-	scrollY-=FONT_SIZE;
+        scrollY-=FONT_SIZE;
         cursor_Line--;
         tempS--;
-	
+
       }
       else cursor_Line--;
       //printf("%d\n",cursor_Line);
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length)
-	? buffer.line[cursor_Line]->length
-	: cursor_Pos;
+        ? buffer.line[cursor_Line]->length
+        : cursor_Pos;
       //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
-    else if (e->key.keysym.sym == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
+    else if (e->key.key == SDLK_DOWN && cursor_Line < buffer.nlines - 1) {
 
       if (cursor_Line + 1 > tempS) {
-	scrollY+=FONT_SIZE;
+        scrollY+=FONT_SIZE;
         cursor_Line++;
-	tempS++;
+        tempS++;
       }
       else cursor_Line++;
       //printf("%d\n",cursor_Line);
       cursor_Pos = (cursor_Pos > buffer.line[cursor_Line]->length)
-	? buffer.line[cursor_Line]->length
-	: cursor_Pos;
+        ? buffer.line[cursor_Line]->length
+        : cursor_Pos;
       //printf("%d %d\n",cursor_Pos,cursor_Line);
     }
   }
@@ -876,12 +869,12 @@ void renderText(int startX, int startY) {
       const char c = buffer.line[j]->data[i];
       // if (c < 32 || c >= 128) continue; //
       if (buffer.line[j]->data[i + 1] != NULL) {
-	if (strncmp(&buffer.line[j]->data[i],"//",2)==0) {
-	  comment=1;
+        if (strncmp(&buffer.line[j]->data[i],"//",2)==0) {
+          comment=1;
         } else if (strncmp(&buffer.line[j]->data[i], "#include", 8)==0) {
-	  comment=2;
+          comment=2;
         } else if ((strncmp(&buffer.line[j]->data[i], "void", 4) == 0||strncmp(&buffer.line[j]->data[i], "char", 4) == 0||strncmp(&buffer.line[j]->data[i], "float", 4) == 0)&&comment==0) {
-	  comment=3;
+          comment=3;
         } else if (strncmp(&buffer.line[j]->data[i], "int", 3) == 0&&comment==0){
           comment = 4;
         } else if (strncmp(&buffer.line[j]->data[i], "#define", 7) == 0 && comment == 0) {
@@ -889,74 +882,74 @@ void renderText(int startX, int startY) {
         }
       }
       CharInfo* chInfo = &fontMap[c];
-      if(c=='\n'||c==10){ 
-	y+=FONT_SIZE;//like from metrics heigth
-	x=startX;
-	break;
+      if(c=='\n'||c==10){
+        y+=FONT_SIZE;//like from metrics heigth
+        x=startX;
+        break;
       }
       if(comment==0){
-	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	SDL_SetTextureColorMod( fontAtlas,255,255,255);
-	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+        SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+        SDL_SetTextureColorMod( fontAtlas,255,255,255);
+        SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       }
       else if (comment==1) {
-	SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	SDL_SetTextureColorMod( fontAtlas,0,200,0);
-	SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+        SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+        SDL_SetTextureColorMod( fontAtlas,0,200,0);
+        SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       } else if (comment == 2) {
         if (cCount == 8){
           comment = 0;
           cCount = 0;
-	  i--;
-	  continue;
+          i--;
+          continue;
         }
-	else{
-	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	  SDL_SetTextureColorMod( fontAtlas,0,20,200);
-	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
-	  cCount++;
-	}
+        else{
+          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_SetTextureColorMod( fontAtlas,0,20,200);
+          SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+          cCount++;
+        }
       } else if (comment == 3) {
         if (cCount == 4){
           comment = 0;
           cCount = 0;
-	  i--;
-	  continue;
-	}
-	else{
-	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	  SDL_SetTextureColorMod( fontAtlas,0,200,200);
-	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
-	  cCount++;
-	}
+          i--;
+          continue;
+        }
+        else{
+          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_SetTextureColorMod( fontAtlas,0,200,200);
+          SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+          cCount++;
+        }
       }
       else if (comment == 4) {
         if (cCount == 3){
           comment = 0;
           cCount = 0;
-	  i--;
-	  continue;
-	}
-	else{
-	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	  SDL_SetTextureColorMod( fontAtlas,0,200,200);
-	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
-	  cCount++;
-	}
+          i--;
+          continue;
+        }
+        else{
+          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_SetTextureColorMod( fontAtlas,0,200,200);
+          SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+          cCount++;
+        }
       }
       else if (comment == 5) {
         if (cCount == 7){
           comment = 0;
           cCount = 0;
-	  i--;
-	  continue;
-	}
-	else{
-	  SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
-	  SDL_SetTextureColorMod( fontAtlas,0,200,200);
-	  SDL_RenderCopy(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
-	  cCount++;
-	}
+          i--;
+          continue;
+        }
+        else{
+          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_SetTextureColorMod( fontAtlas,0,200,200);
+          SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
+          cCount++;
+        }
       }
 
       x += chInfo->width; //
@@ -972,25 +965,17 @@ void updateCharAt(int index, char newChar) {
 void initPanel(Panel *p) {
   int atlasWidth = 800;
   int atlasHeight = 25;
-  SDL_Surface* surface = SDL_CreateRGBSurface(
-					      0,
-					      atlasWidth,
-					      atlasHeight,
-					      32,
-					      0x00FF0000,
-					      0x0000FF00,
-					      0x000000FF,
-					      0xFF000000);
+  SDL_Surface* surface =SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_RGBA32);
 
-  SDL_FillRect( surface,NULL,SDL_MapRGBA(surface->format, 255, 255, 255, 150)); // Fill with red
+  SDL_FillSurfaceRect( surface,NULL,0xABFFFFAB); // Fill with red//255, 255, 255, 150
   p->panelTexture = SDL_CreateTextureFromSurface(renderer, surface);
 
-  SDL_FreeSurface(surface);
+  SDL_DestroySurface(surface);
 }
 
 void renderPanel(SDL_Renderer *renderer,Panel *p,int x,int y){
   SDL_Rect dstRect = {0,575,800,FONT_SIZE*2}; // 14
-  SDL_RenderCopy(renderer,p->panelTexture,NULL, &dstRect);
+  SDL_RenderTexture(renderer,p->panelTexture,NULL, &dstRect);
 }
 
 void freePanel(Panel *p) {
@@ -1000,27 +985,19 @@ void freePanel(Panel *p) {
 void initCursor(Cursor *c){
   int atlasWidth = 16;
   int atlasHeight = 24;
-  SDL_Surface* surface = SDL_CreateRGBSurface(
-					      0,
-					      atlasWidth,
-					      atlasHeight,
-					      32,
-					      0x00FF0000,
-					      0x0000FF00,
-					      0x000000FF,
-					      0xFF000000);
-  
-  SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 255, 255, 255, 255)); // Fill with red
+  SDL_Surface* surface =SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_RGBA32);
+
+  SDL_FillSurfaceRect(surface, NULL, 0xFFFFFFFF); // Fill with red
   c->cursorTexture = SDL_CreateTextureFromSurface(renderer, surface);
-  
-  SDL_FreeSurface(surface);
-  
+
+  SDL_DestroySurface(surface);
+
 }
 
 void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y){
   // SDL_Rect dstRect = { x*13, y*24,13,23 };//24
   SDL_Rect dstRect = {x * 8, y * FONT_SIZE-scrollY, 9, FONT_SIZE}; // 14//need understand how to calculate actual size cursor
-  SDL_RenderCopy(renderer,c->cursorTexture,NULL, &dstRect);
+  SDL_RenderTexture(renderer,c->cursorTexture,NULL, &dstRect);
 }
 
 void freeCursor(Cursor *c){
@@ -1028,13 +1005,13 @@ void freeCursor(Cursor *c){
 }
 
 void openCurFile(currFile *file,const char* path) {
-  file->file = SDL_RWFromFile(path, "r");//"OpenglSDL2Window5.c"
+  file->file = SDL_IOFromFile(path, "r");//"OpenglSDL2Window5.c"
   if (file == NULL) {
     SDL_Log("Error opening file: %s", SDL_GetError());
 
     // Handle error
   } else {
-    Sint64 file_size = SDL_RWsize(file->file);
+    Sint64 file_size = SDL_GetIOSize(file->file);
     SDL_Log("File size: %ld bytes", file_size);
   }
 }
@@ -1046,8 +1023,8 @@ void readFile(currFile *cfile,Buffer *buffer) {
   int i = 0;
 
 
-  while ((bytesRead = SDL_RWread(cfile->file, &c, sizeof(unsigned char), 1)) > 0) {
-    
+  while ((bytesRead = SDL_ReadIO(cfile->file, &c, sizeof(unsigned char))) > 0) {
+
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
       buffer1[i] = '\n';                         // Null-terminate the string
       buffer1[i + 1] = '\0';                     // Null-terminate the string
@@ -1069,6 +1046,5 @@ void readFile(currFile *cfile,Buffer *buffer) {
 
 
 void closeCurFile(currFile *file) {
-  SDL_RWclose(file->file); // Close the file when done
+  SDL_CloseIO(file->file); // Close the file when done
 }
-
