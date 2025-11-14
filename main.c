@@ -207,7 +207,7 @@ void closeCurFile(currFile *file);
 
 int main(int argc, char *argv[]) {
   currFile cfile;
-  openCurFile(&cfile, "../../main.c");//test file like self file//need open from arg/from hotkey/from menu
+  openCurFile(&cfile, "main.c");//test file like self file//need open from arg/from hotkey/from menu
 
   if (!initSDL()) return 1;
   if (!createFontAtlas()) return 1;
@@ -712,7 +712,7 @@ int createFontAtlas() {
   //create surface atlas
   int atlasWidth = (16+40)*FONT_SIZE;
   int atlasHeight = (16+40)*FONT_SIZE;
-  SDL_Surface* surface = SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_BGR24);
+  SDL_Surface* surface = SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_RGBA32);
   if (!surface) {
     printf("SDL_CreateRGBSurface Error: %s\n", SDL_GetError());
     return 0;
@@ -723,7 +723,7 @@ int createFontAtlas() {
   for (size_t c = 32; c < 128; c++) {
     char32_t ch = c;
     //render surface
-    SDL_Surface* glyphSurface = TTF_RenderGlyph_Shaded(font, c, (SDL_Color){255,255,255,255},(SDL_Color){0,0,0,0});//
+    SDL_Surface* glyphSurface = TTF_RenderGlyph_Solid(font, c, (SDL_Color){255,255,255,255});//
     if (!glyphSurface) {
       printf("TTF_RenderGlyph_Blended Error: %s\n", SDL_GetError());
       continue;
@@ -744,7 +744,12 @@ int createFontAtlas() {
       destRect.h= glyphSurface->h;
     }
 
-    SDL_BlitSurface(glyphSurface, NULL, surface, &destRect);
+    SDL_Rect temp;
+    temp.x =destRect.x;
+temp.y =destRect.y;
+temp.w =destRect.w;
+temp.h =destRect.h;
+    SDL_BlitSurface(glyphSurface, NULL, surface, &temp);
 
     //fill atlas
     fontMap[c].ch = ch;
@@ -888,12 +893,12 @@ void renderText(int startX, int startY) {
         break;
       }
       if(comment==0){
-        SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+        SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
         SDL_SetTextureColorMod( fontAtlas,255,255,255);
         SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       }
       else if (comment==1) {
-        SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+        SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
         SDL_SetTextureColorMod( fontAtlas,0,200,0);
         SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
       } else if (comment == 2) {
@@ -904,7 +909,7 @@ void renderText(int startX, int startY) {
           continue;
         }
         else{
-          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
           SDL_SetTextureColorMod( fontAtlas,0,20,200);
           SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
           cCount++;
@@ -917,7 +922,7 @@ void renderText(int startX, int startY) {
           continue;
         }
         else{
-          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
           SDL_SetTextureColorMod( fontAtlas,0,200,200);
           SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
           cCount++;
@@ -931,7 +936,7 @@ void renderText(int startX, int startY) {
           continue;
         }
         else{
-          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
           SDL_SetTextureColorMod( fontAtlas,0,200,200);
           SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
           cCount++;
@@ -945,7 +950,7 @@ void renderText(int startX, int startY) {
           continue;
         }
         else{
-          SDL_Rect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
+          SDL_FRect dstRect = {x, y, chInfo->srcRect.w, chInfo->srcRect.h};
           SDL_SetTextureColorMod( fontAtlas,0,200,200);
           SDL_RenderTexture(renderer, fontAtlas, &chInfo->srcRect, &dstRect);
           cCount++;
@@ -967,14 +972,14 @@ void initPanel(Panel *p) {
   int atlasHeight = 25;
   SDL_Surface* surface =SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_RGBA32);
 
-  SDL_FillSurfaceRect( surface,NULL,0xABFFFFAB); // Fill with red//255, 255, 255, 150
+  SDL_FillSurfaceRect( surface,NULL,SDL_MapSurfaceRGBA(surface, 255, 255, 255, 150)); // Fill with red//255, 255, 255, 150
   p->panelTexture = SDL_CreateTextureFromSurface(renderer, surface);
 
   SDL_DestroySurface(surface);
 }
 
 void renderPanel(SDL_Renderer *renderer,Panel *p,int x,int y){
-  SDL_Rect dstRect = {0,575,800,FONT_SIZE*2}; // 14
+  SDL_FRect dstRect = {0,575,800,FONT_SIZE*2}; // 14
   SDL_RenderTexture(renderer,p->panelTexture,NULL, &dstRect);
 }
 
@@ -987,7 +992,7 @@ void initCursor(Cursor *c){
   int atlasHeight = 24;
   SDL_Surface* surface =SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_RGBA32);
 
-  SDL_FillSurfaceRect(surface, NULL, 0xFFFFFFFF); // Fill with red
+  SDL_FillSurfaceRect(surface, NULL,SDL_MapSurfaceRGBA(surface, 255, 255, 255, 255)); // Fill with red
   c->cursorTexture = SDL_CreateTextureFromSurface(renderer, surface);
 
   SDL_DestroySurface(surface);
@@ -996,7 +1001,7 @@ void initCursor(Cursor *c){
 
 void renderCursor(SDL_Renderer* renderer,Cursor *c,int x,int y){
   // SDL_Rect dstRect = { x*13, y*24,13,23 };//24
-  SDL_Rect dstRect = {x * 8, y * FONT_SIZE-scrollY, 9, FONT_SIZE}; // 14//need understand how to calculate actual size cursor
+  SDL_FRect dstRect = {x * 8, y * FONT_SIZE-scrollY, 9, FONT_SIZE}; // 14//need understand how to calculate actual size cursor
   SDL_RenderTexture(renderer,c->cursorTexture,NULL, &dstRect);
 }
 
