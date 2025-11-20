@@ -1,12 +1,12 @@
 #include <math.h>
 #include <stddef.h>
-// #define SDL_MAIN_HANDLED
+#define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <uchar.h>
+#include <stdio.h>
 
 //GhbdtnПривет😊
 #define SCREEN_WIDTH 800
@@ -240,12 +240,14 @@ int main(int argc, char *argv[]) {
     is_event = SDL_WaitEvent(&e);
 
     int event = is_event;
-
+    SDL_StartTextInput(window);
     while (is_event) {
       if (e.type == SDL_EVENT_QUIT) {
         running = 0;
       } else if(e.type == SDL_EVENT_TEXT_INPUT||e.type == SDL_EVENT_KEY_DOWN) {
+
         handleInput(&e,renderer);
+
       }
       is_event = SDL_PollEvent(&e);
     }
@@ -277,6 +279,7 @@ int main(int argc, char *argv[]) {
     }
 
   }
+  SDL_StopTextInput(window);
   CustomString_free(&cstring);
   buffer_free(&buffer);
   freePanel(&panel);
@@ -319,7 +322,7 @@ char* getC(int N){
   char *gNumber=malloc(sizeof(char)*l);
   if(gNumber==NULL)exit(-1);
 
-  snprintf(gNumber,l, "%d", N);
+  int tempN=snprintf(gNumber,l, "%d", N);
   //printf("%s\n",gNumber);
   return gNumber;
 }
@@ -675,6 +678,8 @@ void CustomString_free(CustomString *s) {
 //init SDL SDL_ttf
 int initSDL() {
 
+    SDL_SetHint(SDL_HINT_X11_WINDOW_TYPE, "1");
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
 if (!SDL_Init(SDL_INIT_VIDEO)) {
      SDL_Log("SDL_Init failed: %s", SDL_GetError());
      return -1;
@@ -683,6 +688,7 @@ if (!SDL_Init(SDL_INIT_VIDEO)) {
     printf("TTF_Init Error: %s\n", SDL_GetError());
     return 0;
   }
+
   //start info
   int ww, hh;
   getWindowGW(&ww);
@@ -690,17 +696,21 @@ if (!SDL_Init(SDL_INIT_VIDEO)) {
   int WindowW=(ww*FONT_SIZE);
   int WindowH = (hh * FONT_SIZE);
 
-  SDL_CreateWindowAndRenderer("Test",WindowW, WindowH,SDL_WINDOW_RESIZABLE,&window, &renderer);
+  SDL_CreateWindowAndRenderer("Test",WindowW, WindowH,SDL_WINDOW_HIGH_PIXEL_DENSITY,&window, &renderer);
   return 1;
 }
 
 //create Texture Atlas
 int createFontAtlas() {
+  TTF_SetFontSDF(font,true);
   font = TTF_OpenFont("consola.ttf", FONT_SIZE);
   if (!font) {
     printf("TTF_OpenFont Error: %s\n",SDL_GetError());
     return 0;
   }
+
+  // TTF_SetFontSizeDPI(font,10,96,96);
+  // TTF_SetFontKerning(font,true);
   // this is just for debug time
   //start
   int fx,fy,mx,my,ma;
@@ -712,7 +722,7 @@ int createFontAtlas() {
   //create surface atlas
   int atlasWidth = (16+40)*FONT_SIZE;
   int atlasHeight = (16+40)*FONT_SIZE;
-  SDL_Surface* surface = SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_RGBA32);
+  SDL_Surface* surface = SDL_CreateSurface(atlasWidth,atlasHeight,SDL_PIXELFORMAT_ARGB128_FLOAT);
   if (!surface) {
     printf("SDL_CreateRGBSurface Error: %s\n", SDL_GetError());
     return 0;
@@ -723,7 +733,7 @@ int createFontAtlas() {
   for (size_t c = 32; c < 128; c++) {
     char32_t ch = c;
     //render surface
-    SDL_Surface* glyphSurface = TTF_RenderGlyph_Solid(font, c, (SDL_Color){255,255,255,255});//
+    SDL_Surface* glyphSurface = TTF_RenderGlyph_Blended(font, c, (SDL_Color){255,255,255,255});//
     if (!glyphSurface) {
       printf("TTF_RenderGlyph_Blended Error: %s\n", SDL_GetError());
       continue;
@@ -780,8 +790,8 @@ void handleInput(SDL_Event* e,SDL_Renderer *renderer) {
   if (e->type == SDL_EVENT_TEXT_INPUT) {
     if (textLength < MAX_TEXT_LENGTH - 1) {
       buffer_insert_char(&buffer, cursor_Line, cursor_Pos, e->text.text[0]);
-      //buffer.totalSizeChars++;
-      //
+    //   buffer.totalSizeChars++;
+    //   //
       cursor_Pos++;
     }
   }
@@ -873,7 +883,7 @@ void renderText(int startX, int startY) {
     for (int i = 0; i < buffer.line[j]->length; i++) {
       const char c = buffer.line[j]->data[i];
       // if (c < 32 || c >= 128) continue; //
-      if (buffer.line[j]->data[i + 1] != NULL) {
+      if (&buffer.line[j]->data[i + 1] != NULL) {
         if (strncmp(&buffer.line[j]->data[i],"//",2)==0) {
           comment=1;
         } else if (strncmp(&buffer.line[j]->data[i], "#include", 8)==0) {
@@ -1022,13 +1032,13 @@ void openCurFile(currFile *file,const char* path) {
 }
 
 void readFile(currFile *cfile,Buffer *buffer) {
-  unsigned char buffer1[1024]; // Adjust buffer size as needed
+  char buffer1[1024]; // Adjust buffer size as needed
   unsigned char c;
   int bytesRead;
   int i = 0;
 
 
-  while ((bytesRead = SDL_ReadIO(cfile->file, &c, sizeof(unsigned char))) > 0) {
+  while ((bytesRead = SDL_ReadIO(cfile->file, &c, sizeof(char))) > 0) {
 
     if (c == '\n' || i >= sizeof(buffer1) - 1) { // Newline or buffer full
       buffer1[i] = '\n';                         // Null-terminate the string
